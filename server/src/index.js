@@ -40,6 +40,7 @@ import pulseSurveysRouter from "./routes/pulseSurveys.js";
 import workforceMetricsRouter from "./routes/workforceMetrics.js";
 import recognitionRewardsRouter from "./routes/recognitionRewards.js";
 import workforceQueryRouter from "./routes/workforceQuery.js";
+import payBandsRouter from "./routes/payBands.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -311,6 +312,11 @@ app.use(
 app.use(
   "/api/workforce-query",
   workforceQueryRouter
+);
+
+app.use(
+  "/api/pay-bands",
+  payBandsRouter,
 );
 /* ---------------------------------------------------------
    HR ESCALATION MANAGER

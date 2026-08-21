@@ -888,7 +888,8 @@ route: "/app/tools/approval-routing",
               name: "Pay Band & Structure Builder",
               tagline:
                 "Consistent, auditable salary structures",
-              status: "planned",
+              status: "available",
+              route: "/app/tools/pay-band-structure-builder",
             },
           },
 

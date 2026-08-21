@@ -76,7 +76,7 @@ import AttritionDemandForecasting from "./pages/tools/AttritionDemandForecasting
 import OrgChartBuilder from "./pages/tools/OrgChartBuilder";
 
 import PulseSurvey from "./pages/tools/PulseSurvey";
-
+import PayBandStructureBuilder from "./pages/tools/PayBandStructureBuilder";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -395,8 +395,14 @@ export default function App() {
               element={<HeadcountPlanning />}
             />
             <Route
-  path="tools/ask-your-data"
-  element={<AskYourData />}
+            path="tools/ask-your-data"
+            element={<AskYourData />}
+            />
+            <Route
+  path="tools/pay-band-structure-builder"
+  element={
+    <PayBandStructureBuilder />
+  }
 />
             {/* =================================================
                 WORKFORCE METRICS
