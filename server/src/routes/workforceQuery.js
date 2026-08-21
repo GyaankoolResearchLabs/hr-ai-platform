@@ -1,31 +1,16 @@
 import express from "express";
+import { requireAuth } from "../middleware/auth.js";
 import {
   queryWorkforceData,
 } from "../services/workforceQueryService.js";
 
 const router = express.Router();
 
-function getBearerToken(req) {
-  const authorization =
-    req.headers.authorization || "";
-
-  if (
-    !authorization.startsWith(
-      "Bearer "
-    )
-  ) {
-    return null;
-  }
-
-  return authorization.substring(7);
-}
-
-router.post("/", async (req, res) => {
+// POST /api/workforce-query
+// Requires authentication - uses req.user.organization_id set by requireAuth middleware
+router.post("/", requireAuth, async (req, res) => {
   try {
-    const {
-      question,
-      organizationId,
-    } = req.body || {};
+    const { question } = req.body || {};
 
     if (
       !question ||
@@ -37,28 +22,21 @@ router.post("/", async (req, res) => {
       });
     }
 
-    /*
-     * The frontend already sends the Supabase
-     * access token through the Axios interceptor.
-     *
-     * We preserve it here for compatibility with
-     * the application's existing authentication flow.
-     */
-    const token =
-      getBearerToken(req);
+    // Organization ID comes from the authenticated session via requireAuth middleware
+    // Never trust organizationId from the request body
+    const organizationId = req.user.organization_id;
 
-    if (!token) {
-      return res.status(401).json({
+    if (!organizationId) {
+      return res.status(403).json({
         message:
-          "Authentication required.",
+          "No organization found for authenticated user.",
       });
     }
 
     const result =
       await queryWorkforceData({
         question,
-        organizationId:
-          organizationId || null,
+        organizationId,
       });
 
     return res.json(result);

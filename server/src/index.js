@@ -24,6 +24,7 @@ import jobDescriptionRouter from "./routes/jobDescription.js";
 import interviewScorecardsRouter from "./routes/interviewScorecards.js";
 import hiringPipelineRouter from "./routes/hiringPipeline.js";
 import hrCasesRoutes from "./routes/hrCases.js";
+import employeeRelationsCasesRoutes from "./routes/employeeRelationsCases.js";
 import employeeSelfServiceRoutes from "./routes/employeeSelfService.js";
 import onboardingRoutes from "./routes/onboarding.js";
 import buddyMentorRouter from "./routes/buddyMentor.js";
@@ -43,6 +44,8 @@ import workforceQueryRouter from "./routes/workforceQuery.js";
 import payBandsRouter from "./routes/payBands.js";
 import marketBenchmarkingRoutes from "./routes/marketBenchmarking.js";
 import compReviewCyclesRouter from "./routes/compReviewCycles.js";
+import shiftHolidayRouter from "./routes/shiftHoliday.js";
+
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -60,17 +63,27 @@ const app = express();
 const PORT =
   process.env.PORT || 4000;
 
-const CLIENT_ORIGIN =
-  process.env.CLIENT_ORIGIN ||
-  "http://localhost:5173";
-
-/* =========================================================
-   GLOBAL MIDDLEWARE
-========================================================= */
+const CLIENT_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+];
 
 app.use(
   cors({
-    origin: CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (CLIENT_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`CORS blocked origin: ${origin}`),
+        false
+      );
+    },
     credentials: true,
   }),
 );
@@ -225,6 +238,10 @@ app.use(
 );
 
 app.use(
+  "/api/employee-relations-cases",
+  employeeRelationsCasesRoutes,
+);
+app.use(
   "/api/employee-self-service",
   employeeSelfServiceRoutes
 );
@@ -254,7 +271,12 @@ app.use(
   learningRouter,
 );
 
-app.use("/api/learning", learningCourseRoutes);
+/* Course generation endpoint (has its own requireAuth guard) */
+app.use(
+  "/api/learning",
+  learningCourseRoutes,
+);
+
 app.use(
   "/api/training-compliance",
   trainingComplianceRoutes
@@ -289,6 +311,7 @@ app.use(
   "/api/comp-review-cycles",
   compReviewCyclesRouter,
 );
+
 /* ---------------------------------------------------------
    WORKFORCE METRICS
 --------------------------------------------------------- */
@@ -317,13 +340,17 @@ app.use(
 );
 
 app.use(
-  "/api/learning",
-  learningRouter,
-);
-
-app.use(
   "/api/workforce-query",
   workforceQueryRouter
+);
+
+/* ---------------------------------------------------------
+   SHIFT & HOLIDAY CALENDAR
+--------------------------------------------------------- */
+
+app.use(
+  "/api/shift-holiday",
+  shiftHolidayRouter,
 );
 
 app.use(

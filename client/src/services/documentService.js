@@ -81,7 +81,7 @@ const documentService = {
 
     const { data } =
       await api.post(
-        "/documents/offer-letter",
+        "/documents/generate",
         payload
       );
 

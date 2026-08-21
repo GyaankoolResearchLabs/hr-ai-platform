@@ -21,8 +21,9 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
+import api from "../../lib/api";
+import { supabase } from "../../lib/supabaseClient";
 
-const API_BASE_URL = "http://localhost:4000/api";
 
 export default function AICourseGenerator() {
   const location = useLocation();
@@ -149,7 +150,12 @@ Managers are responsible for ensuring that employees understand applicable safet
       setSuccess("");
       setGeneratedCourse(null);
 
-      const token = localStorage.getItem("token");
+      // Get the current session token from Supabase
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const token = session?.access_token;
 
       if (!token) {
         throw new Error(
@@ -233,8 +239,12 @@ Managers are responsible for ensuring that employees understand applicable safet
         payload
       );
 
+      const apiUrl =
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:4000/api";
+
       const response = await fetch(
-        `${API_BASE_URL}/learning/courses/generate`,
+        `${apiUrl}/learning/courses/generate`,
         {
           method: "POST",
 

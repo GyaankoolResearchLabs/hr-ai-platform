@@ -79,6 +79,7 @@ import PulseSurvey from "./pages/tools/PulseSurvey";
 import PayBandStructureBuilder from "./pages/tools/PayBandStructureBuilder";
 import MarketBenchmarking from "./pages/tools/MarketBenchmarking";
 import CompReviewCycleManager from "./pages/tools/CompReviewCycleManager";
+import ERCaseManagement from "./pages/tools/ERCaseManagement";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -414,6 +415,11 @@ export default function App() {
   <Route
   path="tools/comp-review-cycle-manager"
   element={<CompReviewCycleManager />}
+/>
+
+<Route
+  path="tools/er-case-management"
+  element={<ERCaseManagement />}
 />
             {/* =================================================
                 WORKFORCE METRICS

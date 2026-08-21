@@ -17,18 +17,19 @@ export default function Signup() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { data, error } = await authService.signUp({ email, password, fullName });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
-    // If email confirmation is disabled on the Supabase project, a session
-    // comes back immediately and we can continue straight to org setup.
-    if (data?.session) {
-      navigate("/organization/setup", { replace: true });
-    } else {
-      setSubmitted(true);
+    try {
+      const { data } = await authService.signUp({ email, password, fullName });
+      // If email confirmation is disabled on the Supabase project, a session
+      // comes back immediately and we can continue straight to org setup.
+      if (data?.session) {
+        navigate("/organization/setup", { replace: true });
+      } else {
+        setSubmitted(true);
+      }
+    } catch (err) {
+      setError(err.message || "Signup failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 

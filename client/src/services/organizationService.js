@@ -10,4 +10,9 @@ export const organizationService = {
     const { data } = await api.get("/organizations/me");
     return data;
   },
+
+  async update({ name, industry, size }) {
+    const { data } = await api.patch("/organizations/me", { name, industry, size });
+    return data;
+  },
 };

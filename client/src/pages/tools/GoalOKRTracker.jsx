@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { supabase } from "../../lib/supabaseClient";
+import api from "../../lib/api";
 import toast from "react-hot-toast";
 
 import {
@@ -20,28 +19,6 @@ import {
   ChevronDown,
   AlertCircle,
 } from "lucide-react";
-
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:4000/api";
-
-const api = axios.create({
-  baseURL: API_URL,
-});
-
-api.interceptors.request.use(async (config) => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (session?.access_token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization =
-      `Bearer ${session.access_token}`;
-  }
-
-  return config;
-});
 
 function getEmployeeId(employee) {
   return (

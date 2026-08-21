@@ -17,7 +17,7 @@ const openai = apiKey
 
 const MODEL =
   process.env.OPENAI_MODEL ||
-  "gpt-5.6-luna";
+  "gpt-4o-mini";
 
 /*
 |--------------------------------------------------------------------------
@@ -282,9 +282,15 @@ recruiter, not like an AI-generated template.
   );
 
   const response =
-    await openai.responses.create({
+    await openai.chat.completions.create({
       model: MODEL,
-      input: prompt,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
     });
 
   /*
@@ -294,7 +300,7 @@ recruiter, not like an AI-generated template.
   */
 
   const generatedText =
-    response?.output_text?.trim();
+    response?.choices?.[0]?.message?.content?.trim();
 
   if (!generatedText) {
     console.error(
@@ -391,10 +397,9 @@ ${organizationContext || "None supplied"}
 
   try {
     const response =
-      await openai.responses.create({
+      await openai.chat.completions.create({
         model: MODEL,
-
-        input: [
+        messages: [
           {
             role: "system",
             content: systemInstruction,
@@ -404,10 +409,11 @@ ${organizationContext || "None supplied"}
             content: userPrompt,
           },
         ],
+        temperature: 0.7,
       });
 
     const reply =
-      response?.output_text?.trim();
+      response?.choices?.[0]?.message?.content?.trim();
 
     if (!reply) {
       throw new Error(

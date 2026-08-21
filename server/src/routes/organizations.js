@@ -60,4 +60,31 @@ router.post("/", requireAuth, async (req, res) => {
   res.status(201).json(organization);
 });
 
+// PATCH /api/organizations/me - update current organization details
+router.patch("/me", requireAuth, async (req, res) => {
+  const { name, industry, size } = req.body || {};
+
+  const allowed = {};
+  if (name && name.trim()) allowed.name = name.trim();
+  if (industry !== undefined) allowed.industry = industry || null;
+  if (size !== undefined) allowed.size = size || null;
+
+  if (Object.keys(allowed).length === 0) {
+    return res.status(400).json({ message: "No valid fields to update." });
+  }
+
+  const { data: updated, error } = await supabaseAdmin
+    .from("organizations")
+    .update(allowed)
+    .eq("id", req.user.organization_id)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({ message: "Could not update organization.", detail: error.message });
+  }
+
+  res.json(updated);
+});
+
 export default router;

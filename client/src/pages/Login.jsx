@@ -16,13 +16,14 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error } = await authService.signIn({ email, password });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
+    try {
+      await authService.signIn({ email, password });
+      navigate(location.state?.from?.pathname || "/app/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
-    navigate(location.state?.from?.pathname || "/app/dashboard", { replace: true });
   }
 
   return (
