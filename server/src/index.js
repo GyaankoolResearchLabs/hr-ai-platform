@@ -46,6 +46,7 @@ import marketBenchmarkingRoutes from "./routes/marketBenchmarking.js";
 import compReviewCyclesRouter from "./routes/compReviewCycles.js";
 import shiftHolidayRouter from "./routes/shiftHoliday.js";
 import investigationsRoutes from "./routes/investigations.js";
+
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -60,43 +61,219 @@ import {
 
 const app = express();
 
-const PORT =
-  process.env.PORT || 4000;
+const PORT = process.env.PORT || 4000;
+
+/*
+ * Production frontend:
+ *   https://hr-ai-platform.netlify.app
+ *
+ * Local frontend:
+ *   http://localhost:5173
+ *   http://localhost:5174
+ *
+ * CLIENT_ORIGIN is also read from Render environment variables.
+ */
+
+const configuredOrigin = String(
+  process.env.CLIENT_ORIGIN || "",
+)
+  .trim()
+  .replace(/\/$/, "");
 
 const CLIENT_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:5174",
-];
+  "http://localhost:3000",
+  "https://hr-ai-platform.netlify.app",
+  configuredOrigin,
+].filter(
+  (origin, index, array) =>
+    origin && array.indexOf(origin) === index,
+);
+
+/* =========================================================
+   STARTUP CONFIG LOG
+========================================================= */
+
+console.log(
+  "[CORS] Allowed origins:",
+  CLIENT_ORIGINS,
+);
+
+console.log(
+  "[CORS] CLIENT_ORIGIN environment:",
+  configuredOrigin || "NOT SET",
+);
+
+/* =========================================================
+   GLOBAL CORS
+========================================================= */
 
 app.use(
+  cors({
+    origin: (origin, callback) => {
+      /*
+       * Requests such as health checks, curl, Postman,
+       * and server-to-server requests may have no Origin.
+       */
+      if (!origin) {
+        console.log(
+          "[CORS] Request without Origin header: ALLOWED",
+        );
+
+        return callback(null, true);
+      }
+
+      const normalizedOrigin = String(origin)
+        .trim()
+        .replace(/\/$/, "");
+
+      console.log(
+        "[CORS] Incoming origin:",
+        normalizedOrigin,
+      );
+
+      if (
+        CLIENT_ORIGINS.includes(
+          normalizedOrigin,
+        )
+      ) {
+        console.log(
+          "[CORS] Origin allowed:",
+          normalizedOrigin,
+        );
+
+        return callback(null, true);
+      }
+
+      console.error(
+        "[CORS] Origin BLOCKED:",
+        normalizedOrigin,
+      );
+
+      console.error(
+        "[CORS] Allowed origins:",
+        CLIENT_ORIGINS,
+      );
+
+      return callback(
+        new Error(
+          `CORS blocked origin: ${normalizedOrigin}`,
+        ),
+        false,
+      );
+    },
+
+    credentials: true,
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+      "HEAD",
+    ],
+
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "Cache-Control",
+      "Pragma",
+    ],
+
+    exposedHeaders: [
+      "Content-Length",
+      "Content-Type",
+    ],
+
+    optionsSuccessStatus: 204,
+  }),
+);
+
+/*
+ * Explicitly handle preflight requests.
+ *
+ * This makes OPTIONS requests succeed before they
+ * reach authentication middleware inside individual
+ * route files.
+ */
+app.options(
+  "*",
   cors({
     origin: (origin, callback) => {
       if (!origin) {
         return callback(null, true);
       }
 
-      if (CLIENT_ORIGINS.includes(origin)) {
+      const normalizedOrigin = String(origin)
+        .trim()
+        .replace(/\/$/, "");
+
+      if (
+        CLIENT_ORIGINS.includes(
+          normalizedOrigin,
+        )
+      ) {
         return callback(null, true);
       }
 
       return callback(
-        new Error(`CORS blocked origin: ${origin}`),
-        false
+        new Error(
+          `CORS blocked origin: ${normalizedOrigin}`,
+        ),
+        false,
       );
     },
+
     credentials: true,
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+      "HEAD",
+    ],
+
+    allowedHeaders: [
+      "Origin",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "Cache-Control",
+      "Pragma",
+    ],
   }),
 );
 
+/* =========================================================
+   BODY PARSING
+========================================================= */
+
 app.use(
-  express.json(),
+  express.json({
+    limit: "10mb",
+  }),
 );
 
 app.use(
   express.urlencoded({
     extended: true,
+    limit: "10mb",
   }),
 );
+
+/* =========================================================
+   LOGGING
+========================================================= */
 
 app.use(
   morgan("dev"),
@@ -111,8 +288,9 @@ app.get(
   (req, res) => {
     res.json({
       status: "ok",
-      service:
-        "hr-ai-platform-server",
+      service: "hr-ai-platform-server",
+      environment:
+        process.env.NODE_ENV || "development",
     });
   },
 );
@@ -156,11 +334,11 @@ app.use(
   "/api/ai",
   aiRouter,
 );
+
 app.use(
   "/api/ai/job-description",
   jobDescriptionRouter,
 );
-
 
 /* ---------------------------------------------------------
    GENERAL DOCUMENTS
@@ -209,12 +387,6 @@ app.use(
 
 /* ---------------------------------------------------------
    RECRUITMENT
----------------------------------------------------------
-
-   POST
-   /api/recruitment/screen
-
-   Upload and process a candidate resume.
 --------------------------------------------------------- */
 
 app.use(
@@ -229,58 +401,103 @@ app.use(
 
 app.use(
   "/api/hiring-pipeline",
-  hiringPipelineRouter
+  hiringPipelineRouter,
 );
+
+/* ---------------------------------------------------------
+   HR CASES
+--------------------------------------------------------- */
 
 app.use(
   "/api/hr-cases",
-  hrCasesRoutes
+  hrCasesRoutes,
 );
+
+/* ---------------------------------------------------------
+   EMPLOYEE RELATIONS CASES
+--------------------------------------------------------- */
 
 app.use(
   "/api/employee-relations-cases",
   employeeRelationsCasesRoutes,
 );
+
+/* ---------------------------------------------------------
+   EMPLOYEE SELF SERVICE
+--------------------------------------------------------- */
+
 app.use(
   "/api/employee-self-service",
-  employeeSelfServiceRoutes
+  employeeSelfServiceRoutes,
 );
+
+/* ---------------------------------------------------------
+   ONBOARDING
+--------------------------------------------------------- */
 
 app.use(
   "/api/onboarding",
-  onboardingRoutes
+  onboardingRoutes,
 );
+
+/* ---------------------------------------------------------
+   BUDDY / MENTOR
+--------------------------------------------------------- */
 
 app.use(
   "/api/buddy-mentor",
-  buddyMentorRouter
+  buddyMentorRouter,
 );
+
+/* ---------------------------------------------------------
+   GOALS / OKR
+--------------------------------------------------------- */
 
 app.use(
   "/api/goal-okr",
   goalOkrRouter,
 );
 
+/* ---------------------------------------------------------
+   REVIEW CYCLES
+--------------------------------------------------------- */
+
 app.use(
   "/api/review-cycles",
   reviewCyclesRouter,
 );
+
+/* ---------------------------------------------------------
+   LEARNING
+--------------------------------------------------------- */
 
 app.use(
   "/api/learning",
   learningRouter,
 );
 
-/* Course generation endpoint (has its own requireAuth guard) */
+/*
+ * Course generation endpoints.
+ * This router has its own authentication guard.
+ */
+
 app.use(
   "/api/learning",
   learningCourseRoutes,
 );
 
+/* ---------------------------------------------------------
+   TRAINING COMPLIANCE
+--------------------------------------------------------- */
+
 app.use(
   "/api/training-compliance",
-  trainingComplianceRoutes
+  trainingComplianceRoutes,
 );
+
+/* ---------------------------------------------------------
+   WORKFORCE PLANNING
+--------------------------------------------------------- */
 
 app.use(
   "/api/headcount-planning",
@@ -292,30 +509,51 @@ app.use(
   attritionForecastingRoutes,
 );
 
+/* ---------------------------------------------------------
+   ORGANIZATION CHART
+--------------------------------------------------------- */
+
 app.use(
   "/api/org-chart",
   orgChartRouter,
 );
+
+/* ---------------------------------------------------------
+   PULSE SURVEYS
+--------------------------------------------------------- */
 
 app.use(
   "/api/pulse-surveys",
   pulseSurveysRouter,
 );
 
+/* ---------------------------------------------------------
+   MARKET BENCHMARKING
+--------------------------------------------------------- */
+
 app.use(
   "/api/market-benchmarking",
   marketBenchmarkingRoutes,
 );
+
+/* ---------------------------------------------------------
+   COMPENSATION REVIEW CYCLES
+--------------------------------------------------------- */
 
 app.use(
   "/api/comp-review-cycles",
   compReviewCyclesRouter,
 );
 
+/* ---------------------------------------------------------
+   INVESTIGATION TRACKER
+--------------------------------------------------------- */
+
 app.use(
   "/api/investigations",
-  investigationsRoutes
+  investigationsRoutes,
 );
+
 /* ---------------------------------------------------------
    WORKFORCE METRICS
 --------------------------------------------------------- */
@@ -324,15 +562,15 @@ app.use(
   "/api/workforce-metrics",
   workforceMetricsRouter,
 );
+
 /* ---------------------------------------------------------
-   RECOGNITION & REWARDS WALL
+   RECOGNITION & REWARDS
 --------------------------------------------------------- */
 
 app.use(
   "/api/recognition-rewards",
   recognitionRewardsRouter,
 );
-
 
 /* ---------------------------------------------------------
    CONTINUOUS FEEDBACK
@@ -343,9 +581,13 @@ app.use(
   continuousFeedbackRouter,
 );
 
+/* ---------------------------------------------------------
+   WORKFORCE QUERY
+--------------------------------------------------------- */
+
 app.use(
   "/api/workforce-query",
-  workforceQueryRouter
+  workforceQueryRouter,
 );
 
 /* ---------------------------------------------------------
@@ -357,29 +599,17 @@ app.use(
   shiftHolidayRouter,
 );
 
+/* ---------------------------------------------------------
+   PAY BANDS
+--------------------------------------------------------- */
+
 app.use(
   "/api/pay-bands",
   payBandsRouter,
 );
+
 /* ---------------------------------------------------------
    HR ESCALATION MANAGER
----------------------------------------------------------
-
-   GET
-   /api/escalations/overdue
-
-   GET
-   /api/escalations
-
-   POST
-   /api/escalations/:requestId/escalate
-
-   POST
-   /api/escalations/:id/acknowledge
-
-   POST
-   /api/escalations/:id/resolve
-
 --------------------------------------------------------- */
 
 app.use(
@@ -389,29 +619,6 @@ app.use(
 
 /* ---------------------------------------------------------
    HR REQUEST INTAKE
----------------------------------------------------------
-
-   GET
-   /api/hr-requests
-
-   GET
-   /api/hr-requests/:id
-
-   POST
-   /api/hr-requests
-
-   PATCH
-   /api/hr-requests/:id
-
-   POST
-   /api/hr-requests/:id/resolve
-
-   POST
-   /api/hr-requests/:id/cancel
-
-   DELETE
-   /api/hr-requests/:id
-
 --------------------------------------------------------- */
 
 app.use(
@@ -426,11 +633,8 @@ app.use(
 app.use(
   (req, res) => {
     res.status(404).json({
-      message:
-        "API route not found",
-
-      path:
-        req.originalUrl,
+      message: "API route not found",
+      path: req.originalUrl,
     });
   },
 );
@@ -446,13 +650,24 @@ app.use(
       err,
     );
 
-    /* -----------------------------------------------------
-       MULTER ERRORS
-    ----------------------------------------------------- */
-
+    /*
+     * CORS errors
+     */
     if (
-      err?.name ===
-      "MulterError"
+      err?.message?.startsWith(
+        "CORS blocked origin:",
+      )
+    ) {
+      return res.status(403).json({
+        message: err.message,
+      });
+    }
+
+    /*
+     * Multer errors
+     */
+    if (
+      err?.name === "MulterError"
     ) {
       return res.status(400).json({
         message:
@@ -461,18 +676,16 @@ app.use(
       });
     }
 
-    /* -----------------------------------------------------
-       FILE VALIDATION ERRORS
-    ----------------------------------------------------- */
-
+    /*
+     * File validation errors
+     */
     if (
       err?.message?.includes(
         "Only JPG, PNG, WEBP and PDF files are allowed",
       )
     ) {
       return res.status(400).json({
-        message:
-          err.message,
+        message: err.message,
       });
     }
 
@@ -482,15 +695,13 @@ app.use(
       )
     ) {
       return res.status(400).json({
-        message:
-          err.message,
+        message: err.message,
       });
     }
 
-    /* -----------------------------------------------------
-       GENERIC ERROR
-    ----------------------------------------------------- */
-
+    /*
+     * Generic server error
+     */
     return res.status(500).json({
       message:
         err?.message ||
@@ -557,16 +768,24 @@ app.listen(
       `HR AI Platform API listening on port ${PORT}`,
     );
 
-    /* -----------------------------------------------------
-       INITIAL ESCALATION CHECK
-    ----------------------------------------------------- */
+    console.log(
+      "[CORS] Production frontend:",
+      "https://hr-ai-platform.netlify.app",
+    );
 
+    console.log(
+      "[CORS] Effective origins:",
+      CLIENT_ORIGINS,
+    );
+
+    /*
+     * Initial escalation check
+     */
     await runInitialEscalationCheck();
 
-    /* -----------------------------------------------------
-       START CONTINUOUS ESCALATION MONITOR
-    ----------------------------------------------------- */
-
+    /*
+     * Continuous escalation monitor
+     */
     startEscalationMonitor();
   },
 );
