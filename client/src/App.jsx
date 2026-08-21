@@ -78,6 +78,7 @@ import OrgChartBuilder from "./pages/tools/OrgChartBuilder";
 import PulseSurvey from "./pages/tools/PulseSurvey";
 import PayBandStructureBuilder from "./pages/tools/PayBandStructureBuilder";
 import MarketBenchmarking from "./pages/tools/MarketBenchmarking";
+import CompReviewCycleManager from "./pages/tools/CompReviewCycleManager";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -409,6 +410,11 @@ export default function App() {
   path="tools/market-benchmarking"
   element={<MarketBenchmarking />}
   />
+
+  <Route
+  path="tools/comp-review-cycle-manager"
+  element={<CompReviewCycleManager />}
+/>
             {/* =================================================
                 WORKFORCE METRICS
             ================================================= */}

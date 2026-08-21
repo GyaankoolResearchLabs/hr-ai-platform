@@ -924,7 +924,8 @@ route: "/app/tools/approval-routing",
               name: "Comp Review Cycle Manager",
               tagline:
                 "Structured, auditable comp review cycles",
-              status: "planned",
+              status: "available",
+              route: "/app/tools/comp-review-cycle-manager"
             },
           },
         ],

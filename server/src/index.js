@@ -42,6 +42,7 @@ import recognitionRewardsRouter from "./routes/recognitionRewards.js";
 import workforceQueryRouter from "./routes/workforceQuery.js";
 import payBandsRouter from "./routes/payBands.js";
 import marketBenchmarkingRoutes from "./routes/marketBenchmarking.js";
+import compReviewCyclesRouter from "./routes/compReviewCycles.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -282,6 +283,11 @@ app.use(
 app.use(
   "/api/market-benchmarking",
   marketBenchmarkingRoutes,
+);
+
+app.use(
+  "/api/comp-review-cycles",
+  compReviewCyclesRouter,
 );
 /* ---------------------------------------------------------
    WORKFORCE METRICS
