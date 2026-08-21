@@ -41,6 +41,7 @@ import workforceMetricsRouter from "./routes/workforceMetrics.js";
 import recognitionRewardsRouter from "./routes/recognitionRewards.js";
 import workforceQueryRouter from "./routes/workforceQuery.js";
 import payBandsRouter from "./routes/payBands.js";
+import marketBenchmarkingRoutes from "./routes/marketBenchmarking.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -276,6 +277,11 @@ app.use(
 app.use(
   "/api/pulse-surveys",
   pulseSurveysRouter,
+);
+
+app.use(
+  "/api/market-benchmarking",
+  marketBenchmarkingRoutes,
 );
 /* ---------------------------------------------------------
    WORKFORCE METRICS

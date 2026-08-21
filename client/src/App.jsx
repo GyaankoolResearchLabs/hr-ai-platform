@@ -77,6 +77,7 @@ import OrgChartBuilder from "./pages/tools/OrgChartBuilder";
 
 import PulseSurvey from "./pages/tools/PulseSurvey";
 import PayBandStructureBuilder from "./pages/tools/PayBandStructureBuilder";
+import MarketBenchmarking from "./pages/tools/MarketBenchmarking";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -403,7 +404,11 @@ export default function App() {
   element={
     <PayBandStructureBuilder />
   }
-/>
+/>   
+   <Route
+  path="tools/market-benchmarking"
+  element={<MarketBenchmarking />}
+  />
             {/* =================================================
                 WORKFORCE METRICS
             ================================================= */}
