@@ -24,28 +24,28 @@ import jobDescriptionRouter from "./routes/jobDescription.js";
 import interviewScorecardsRouter from "./routes/interviewScorecards.js";
 import hiringPipelineRouter from "./routes/hiringPipeline.js";
 import hrCasesRoutes from "./routes/hrCases.js";
-import employeeRelationsCasesRoutes from "./routes/employeeRelationsCases.js";
-import employeeSelfServiceRoutes from "./routes/employeeSelfService.js";
-import onboardingRoutes from "./routes/onboarding.js";
+import employeeRelationsCasesRouter from "./routes/employeeRelationsCases.js";
+import employeeSelfServiceRouter from "./routes/employeeSelfService.js";
+import onboardingRouter from "./routes/onboarding.js";
 import buddyMentorRouter from "./routes/buddyMentor.js";
 import goalOkrRouter from "./routes/goalOkr.js";
 import reviewCyclesRouter from "./routes/reviewCycles.js";
 import continuousFeedbackRouter from "./routes/continuousFeedback.js";
 import learningRouter from "./routes/learning.js";
 import learningCourseRoutes from "./routes/learningCourseRoutes.js";
-import trainingComplianceRoutes from "./routes/trainingCompliance.js";
+import trainingComplianceRouter from "./routes/trainingCompliance.js";
 import headcountPlanningRouter from "./routes/headcountPlanning.js";
-import attritionForecastingRoutes from "./routes/attritionForecasting.js";
+import attritionForecastingRouter from "./routes/attritionForecasting.js";
 import orgChartRouter from "./routes/orgChart.js";
 import pulseSurveysRouter from "./routes/pulseSurveys.js";
 import workforceMetricsRouter from "./routes/workforceMetrics.js";
 import recognitionRewardsRouter from "./routes/recognitionRewards.js";
 import workforceQueryRouter from "./routes/workforceQuery.js";
 import payBandsRouter from "./routes/payBands.js";
-import marketBenchmarkingRoutes from "./routes/marketBenchmarking.js";
+import marketBenchmarkingRouter from "./routes/marketBenchmarking.js";
 import compReviewCyclesRouter from "./routes/compReviewCycles.js";
 import shiftHolidayRouter from "./routes/shiftHoliday.js";
-import investigationsRoutes from "./routes/investigations.js";
+import investigationsRouter from "./routes/investigations.js";
 
 /* =========================================================
    SERVICES
@@ -61,24 +61,16 @@ import {
 
 const app = express();
 
-const PORT = process.env.PORT || 4000;
+const PORT = Number(process.env.PORT) || 4000;
 
-/*
- * Production frontend:
- *   https://hr-ai-platform.netlify.app
- *
- * Local frontend:
- *   http://localhost:5173
- *   http://localhost:5174
- *
- * CLIENT_ORIGIN is also read from Render environment variables.
- */
+const normalizeOrigin = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/\/$/, "");
 
-const configuredOrigin = String(
-  process.env.CLIENT_ORIGIN || "",
-)
-  .trim()
-  .replace(/\/$/, "");
+const configuredOrigin = normalizeOrigin(
+  process.env.CLIENT_ORIGIN,
+);
 
 const CLIENT_ORIGINS = [
   "http://localhost:5173",
@@ -105,154 +97,99 @@ console.log(
   configuredOrigin || "NOT SET",
 );
 
+console.log(
+  "[SERVER] PORT:",
+  PORT,
+);
+
+console.log(
+  "[SERVER] NODE_ENV:",
+  process.env.NODE_ENV || "development",
+);
+
 /* =========================================================
-   GLOBAL CORS
+   CORS CONFIGURATION
+
+   IMPORTANT:
+   Express 5 does not safely accept "*" as a route path
+   in app.options("*", ...).
+
+   The cors middleware below already handles OPTIONS
+   preflight requests.
 ========================================================= */
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      /*
-       * Requests such as health checks, curl, Postman,
-       * and server-to-server requests may have no Origin.
-       */
-      if (!origin) {
-        console.log(
-          "[CORS] Request without Origin header: ALLOWED",
-        );
+const corsOptions = {
+  origin: (origin, callback) => {
+    /*
+     * Requests without an Origin header:
+     * curl, Render health checks, Postman, server-to-server.
+     */
+    if (!origin) {
+      return callback(null, true);
+    }
 
-        return callback(null, true);
-      }
+    const normalizedOrigin = normalizeOrigin(origin);
 
-      const normalizedOrigin = String(origin)
-        .trim()
-        .replace(/\/$/, "");
+    if (CLIENT_ORIGINS.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
 
-      console.log(
-        "[CORS] Incoming origin:",
-        normalizedOrigin,
-      );
+    console.error(
+      "[CORS] BLOCKED origin:",
+      normalizedOrigin,
+    );
 
-      if (
-        CLIENT_ORIGINS.includes(
-          normalizedOrigin,
-        )
-      ) {
-        console.log(
-          "[CORS] Origin allowed:",
-          normalizedOrigin,
-        );
+    console.error(
+      "[CORS] Allowed origins:",
+      CLIENT_ORIGINS,
+    );
 
-        return callback(null, true);
-      }
+    return callback(
+      new Error(
+        `CORS blocked origin: ${normalizedOrigin}`,
+      ),
+      false,
+    );
+  },
 
-      console.error(
-        "[CORS] Origin BLOCKED:",
-        normalizedOrigin,
-      );
+  credentials: true,
 
-      console.error(
-        "[CORS] Allowed origins:",
-        CLIENT_ORIGINS,
-      );
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+    "HEAD",
+  ],
 
-      return callback(
-        new Error(
-          `CORS blocked origin: ${normalizedOrigin}`,
-        ),
-        false,
-      );
-    },
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+    "Cache-Control",
+    "Pragma",
+  ],
 
-    credentials: true,
+  exposedHeaders: [
+    "Content-Length",
+    "Content-Type",
+  ],
 
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-      "HEAD",
-    ],
+  optionsSuccessStatus: 204,
+};
 
-    allowedHeaders: [
-      "Origin",
-      "X-Requested-With",
-      "Content-Type",
-      "Accept",
-      "Authorization",
-      "Cache-Control",
-      "Pragma",
-    ],
+/* =========================================================
+   GLOBAL CORS
 
-    exposedHeaders: [
-      "Content-Length",
-      "Content-Type",
-    ],
+   This handles normal requests and preflight OPTIONS
+   requests without app.options("*").
+========================================================= */
 
-    optionsSuccessStatus: 204,
-  }),
-);
-
-/*
- * Explicitly handle preflight requests.
- *
- * This makes OPTIONS requests succeed before they
- * reach authentication middleware inside individual
- * route files.
- */
-app.options(
-  "*",
-  cors({
-    origin: (origin, callback) => {
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      const normalizedOrigin = String(origin)
-        .trim()
-        .replace(/\/$/, "");
-
-      if (
-        CLIENT_ORIGINS.includes(
-          normalizedOrigin,
-        )
-      ) {
-        return callback(null, true);
-      }
-
-      return callback(
-        new Error(
-          `CORS blocked origin: ${normalizedOrigin}`,
-        ),
-        false,
-      );
-    },
-
-    credentials: true,
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-      "HEAD",
-    ],
-
-    allowedHeaders: [
-      "Origin",
-      "X-Requested-With",
-      "Content-Type",
-      "Accept",
-      "Authorization",
-      "Cache-Control",
-      "Pragma",
-    ],
-  }),
-);
+app.use(cors(corsOptions));
 
 /* =========================================================
    BODY PARSING
@@ -275,9 +212,7 @@ app.use(
    LOGGING
 ========================================================= */
 
-app.use(
-  morgan("dev"),
-);
+app.use(morgan("dev"));
 
 /* =========================================================
    HEALTH CHECK
@@ -286,7 +221,7 @@ app.use(
 app.get(
   "/api/health",
   (req, res) => {
-    res.json({
+    res.status(200).json({
       status: "ok",
       service: "hr-ai-platform-server",
       environment:
@@ -419,7 +354,7 @@ app.use(
 
 app.use(
   "/api/employee-relations-cases",
-  employeeRelationsCasesRoutes,
+  employeeRelationsCasesRouter,
 );
 
 /* ---------------------------------------------------------
@@ -428,7 +363,7 @@ app.use(
 
 app.use(
   "/api/employee-self-service",
-  employeeSelfServiceRoutes,
+  employeeSelfServiceRouter,
 );
 
 /* ---------------------------------------------------------
@@ -437,7 +372,7 @@ app.use(
 
 app.use(
   "/api/onboarding",
-  onboardingRoutes,
+  onboardingRouter,
 );
 
 /* ---------------------------------------------------------
@@ -476,11 +411,6 @@ app.use(
   learningRouter,
 );
 
-/*
- * Course generation endpoints.
- * This router has its own authentication guard.
- */
-
 app.use(
   "/api/learning",
   learningCourseRoutes,
@@ -492,7 +422,7 @@ app.use(
 
 app.use(
   "/api/training-compliance",
-  trainingComplianceRoutes,
+  trainingComplianceRouter,
 );
 
 /* ---------------------------------------------------------
@@ -506,7 +436,7 @@ app.use(
 
 app.use(
   "/api/attrition-forecasting",
-  attritionForecastingRoutes,
+  attritionForecastingRouter,
 );
 
 /* ---------------------------------------------------------
@@ -533,7 +463,7 @@ app.use(
 
 app.use(
   "/api/market-benchmarking",
-  marketBenchmarkingRoutes,
+  marketBenchmarkingRouter,
 );
 
 /* ---------------------------------------------------------
@@ -551,7 +481,7 @@ app.use(
 
 app.use(
   "/api/investigations",
-  investigationsRoutes,
+  investigationsRouter,
 );
 
 /* ---------------------------------------------------------
@@ -646,7 +576,7 @@ app.use(
 app.use(
   (err, req, res, next) => {
     console.error(
-      "Unhandled server error:",
+      "[SERVER] Unhandled server error:",
       err,
     );
 
@@ -660,6 +590,28 @@ app.use(
     ) {
       return res.status(403).json({
         message: err.message,
+      });
+    }
+
+    /*
+     * JSON body errors
+     */
+    if (
+      err?.type === "entity.parse.failed"
+    ) {
+      return res.status(400).json({
+        message: "Invalid JSON request body.",
+      });
+    }
+
+    /*
+     * Payload too large
+     */
+    if (
+      err?.type === "entity.too.large"
+    ) {
+      return res.status(413).json({
+        message: "Request payload is too large.",
       });
     }
 
@@ -725,10 +677,6 @@ async function runInitialEscalationCheck() {
   }
 }
 
-/* =========================================================
-   START ESCALATION MONITOR
-========================================================= */
-
 function startEscalationMonitor() {
   const ESCALATION_CHECK_INTERVAL =
     60 * 1000;
@@ -778,14 +726,8 @@ app.listen(
       CLIENT_ORIGINS,
     );
 
-    /*
-     * Initial escalation check
-     */
     await runInitialEscalationCheck();
 
-    /*
-     * Continuous escalation monitor
-     */
     startEscalationMonitor();
   },
 );
