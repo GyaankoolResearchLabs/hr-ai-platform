@@ -502,9 +502,10 @@ function startEscalationMonitor() {
 
 app.listen(
   PORT,
+  "0.0.0.0",
   async () => {
     console.log(
-      `HR AI Platform API listening on http://localhost:${PORT}`,
+      `HR AI Platform API listening on port ${PORT}`,
     );
 
     /* -----------------------------------------------------
