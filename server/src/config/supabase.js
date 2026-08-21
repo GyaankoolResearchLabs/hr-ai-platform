@@ -1,41 +1,74 @@
+import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  console.warn(
-    "[supabaseAdmin] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not set. " +
-      "Copy server/.env.example to server/.env and fill in your Supabase project values. " +
-      "Requests that touch the database will fail until this is configured."
+if (!supabaseUrl) {
+  throw new Error(
+    "[SUPABASE] SUPABASE_URL is missing from server/.env"
   );
 }
 
-/**
- * Server-side Supabase client.
- *
- * Uses the service-role key for backend database operations.
- * Never expose this key to the React client.
- */
-export const supabaseAdmin = createClient(
-  supabaseUrl || "https://placeholder.supabase.co",
-  serviceRoleKey || "placeholder-service-role-key",
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
+if (!serviceRoleKey) {
+  throw new Error(
+    "[SUPABASE] SUPABASE_SERVICE_ROLE_KEY is missing from server/.env"
+  );
+}
+
+console.log(
+  "[SUPABASE] URL:",
+  supabaseUrl
 );
 
-/**
- * Compatibility export.
- *
- * Some existing server services/routes import:
- *
- *   import { supabase } from "../config/supabase.js";
- *
- * Keep this alias so those existing modules continue working
- * without having to rewrite every import.
- */
-export const supabase = supabaseAdmin;
+console.log(
+  "[SUPABASE] Service role key:",
+  "FOUND"
+);
+
+/*
+|--------------------------------------------------------------------------
+| Backend Supabase client
+|--------------------------------------------------------------------------
+*/
+
+export const supabaseAdmin =
+  createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    }
+  );
+
+/*
+|--------------------------------------------------------------------------
+| Auth verification client
+|--------------------------------------------------------------------------
+|
+| IMPORTANT:
+|
+| We use the same backend Supabase client for getUser(accessToken).
+|
+| We DO NOT use getClaims().
+| We DO NOT decode the JWT ourselves.
+| We DO NOT manually check exp.
+|
+*/
+
+export const supabaseAuth =
+  supabaseAdmin;
+
+/*
+|--------------------------------------------------------------------------
+| Compatibility export
+|--------------------------------------------------------------------------
+*/
+
+export const supabase =
+  supabaseAdmin;

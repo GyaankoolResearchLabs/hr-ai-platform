@@ -1,133 +1,67 @@
 import axios from "axios";
 import { supabase } from "./supabaseClient";
 
+/* =========================================================
+   API BASE URL
+========================================================= */
+
 const baseURL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:4000/api";
 
+/* =========================================================
+   AXIOS INSTANCE
+========================================================= */
+
 export const api = axios.create({
   baseURL,
+
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 /* =========================================================
-   SESSION REFRESH LOCK
+   REFRESH LOCK
 
-   Prevent multiple API requests from trying to refresh
-   the Supabase session at the same time.
+   Prevent multiple requests from refreshing the same
+   Supabase session simultaneously.
 ========================================================= */
 
 let refreshPromise = null;
 
-async function getValidAccessToken() {
-  try {
-    /* -------------------------------------------------------
-       Get current session
-    ------------------------------------------------------- */
+/* =========================================================
+   GET CURRENT SESSION
 
+   Always read directly from the Supabase client.
+
+   Never read the access token from:
+     localStorage
+     sessionStorage
+     custom token variables
+========================================================= */
+
+async function getCurrentSession() {
+  try {
     const {
-      data: sessionData,
-      error: sessionError,
+      data,
+      error,
     } = await supabase.auth.getSession();
 
-    if (sessionError) {
+    if (error) {
       console.error(
-        "[API AUTH] getSession failed:",
-        sessionError,
+        "[API AUTH] getSession error:",
+        error
       );
 
       return null;
     }
 
-    let session = sessionData?.session;
-
-    console.log(
-      "[API AUTH] Current session:",
-      session ? "FOUND" : "MISSING",
-    );
-
-    if (!session) {
-      return null;
-    }
-
-    /* -------------------------------------------------------
-       Check token expiry
-
-       expires_at is Unix timestamp in seconds.
-       Refresh slightly before expiry to avoid race conditions.
-    ------------------------------------------------------- */
-
-    const now = Math.floor(
-      Date.now() / 1000,
-    );
-
-    const expiresAt =
-      Number(session.expires_at || 0);
-
-    const secondsRemaining =
-      expiresAt - now;
-
-    console.log(
-      "[API AUTH] Token seconds remaining:",
-      secondsRemaining,
-    );
-
-    /* -------------------------------------------------------
-       Refresh if expired or about to expire
-    ------------------------------------------------------- */
-
-    if (
-      !expiresAt ||
-      secondsRemaining <= 60
-    ) {
-      console.log(
-        "[API AUTH] Token expired/near expiry. Refreshing session...",
-      );
-
-      if (!refreshPromise) {
-        refreshPromise =
-          supabase.auth
-            .refreshSession()
-            .finally(() => {
-              refreshPromise = null;
-            });
-      }
-
-      const {
-        data: refreshedData,
-        error: refreshError,
-      } = await refreshPromise;
-
-      if (refreshError) {
-        console.error(
-          "[API AUTH] Session refresh failed:",
-          refreshError,
-        );
-
-        return null;
-      }
-
-      session =
-        refreshedData?.session;
-
-      console.log(
-        "[API AUTH] Session refreshed:",
-        session ? "YES" : "NO",
-      );
-    }
-
-    const token =
-      session?.access_token;
-
-    console.log(
-      "[API AUTH] Access token:",
-      token ? "FOUND" : "MISSING",
-    );
-
-    return token || null;
+    return data?.session || null;
   } catch (error) {
     console.error(
-      "[API AUTH] Unexpected authentication error:",
-      error,
+      "[API AUTH] Unexpected getSession error:",
+      error
     );
 
     return null;
@@ -135,9 +69,193 @@ async function getValidAccessToken() {
 }
 
 /* =========================================================
+   REFRESH SESSION
+
+   Single shared refresh operation.
+========================================================= */
+
+async function refreshSupabaseSession() {
+  if (!refreshPromise) {
+    console.log(
+      "[API AUTH] Starting Supabase session refresh..."
+    );
+
+    refreshPromise =
+      supabase.auth
+        .refreshSession()
+        .then(
+          ({
+            data,
+            error,
+          }) => {
+            if (error) {
+              console.error(
+                "[API AUTH] Supabase refresh failed:",
+                error
+              );
+
+              throw error;
+            }
+
+            const session =
+              data?.session || null;
+
+            console.log(
+              "[API AUTH] Supabase refresh result:",
+              session
+                ? "SESSION RECEIVED"
+                : "NO SESSION"
+            );
+
+            return session;
+          }
+        )
+        .finally(() => {
+          refreshPromise = null;
+        });
+  }
+
+  return refreshPromise;
+}
+
+/* =========================================================
+   GET VALID ACCESS TOKEN
+
+   This is the ONLY place where API requests obtain their
+   bearer token.
+========================================================= */
+
+async function getValidAccessToken() {
+  let session =
+    await getCurrentSession();
+
+  if (!session) {
+    console.warn(
+      "[API AUTH] No Supabase session available."
+    );
+
+    return null;
+  }
+
+  let accessToken =
+    session.access_token;
+
+  if (!accessToken) {
+    console.warn(
+      "[API AUTH] Session contains no access token."
+    );
+
+    return null;
+  }
+
+  /* -------------------------------------------------------
+     Decode expiration for diagnostics
+  ------------------------------------------------------- */
+
+  try {
+    const parts =
+      accessToken.split(".");
+
+    if (parts.length === 3) {
+      const payload =
+        parts[1]
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
+
+      const padded =
+        payload +
+        "=".repeat(
+          (4 -
+            (payload.length % 4)) %
+            4
+        );
+
+      const decoded =
+        JSON.parse(
+          atob(padded)
+        );
+
+      const now =
+        Math.floor(
+          Date.now() / 1000
+        );
+
+      const expiresAt =
+        Number(
+          decoded.exp || 0
+        );
+
+      console.log(
+        "[API AUTH] Current JWT:",
+        {
+          sub:
+            decoded.sub ||
+            null,
+
+          exp:
+            expiresAt,
+
+          now,
+
+          secondsRemaining:
+            expiresAt - now,
+        }
+      );
+
+      /* ---------------------------------------------------
+         Refresh 2 minutes before expiration
+      --------------------------------------------------- */
+
+      if (
+        expiresAt &&
+        expiresAt - now <= 120
+      ) {
+        console.log(
+          "[API AUTH] JWT is near expiration. Refreshing..."
+        );
+
+        session =
+          await refreshSupabaseSession();
+
+        if (!session) {
+          return null;
+        }
+
+        accessToken =
+          session.access_token;
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "[API AUTH] Could not inspect JWT expiration:",
+      error
+    );
+  }
+
+  if (!accessToken) {
+    return null;
+  }
+
+  console.log(
+    "[API AUTH] Using Supabase access token."
+  );
+
+  console.log(
+    "[API AUTH] Token length:",
+    accessToken.length
+  );
+
+  return accessToken;
+}
+
+/* =========================================================
    REQUEST INTERCEPTOR
 
-   Always attach a valid/current Supabase access token.
+   IMPORTANT:
+   We deliberately overwrite Authorization.
+
+   If some old component puts an Authorization header into
+   the request, it cannot replace the current Supabase token.
 ========================================================= */
 
 api.interceptors.request.use(
@@ -145,29 +263,43 @@ api.interceptors.request.use(
     const token =
       await getValidAccessToken();
 
-    if (token) {
-      config.headers =
-        config.headers || {};
-
-      config.headers.Authorization =
-        `Bearer ${token}`;
-    } else {
+    if (!token) {
       console.warn(
-        "[API AUTH] No valid access token available.",
+        "[API AUTH] No valid access token available."
       );
+
+      return config;
     }
+
+    if (!config.headers) {
+      config.headers = {};
+    }
+
+    /*
+     * Force the current token.
+     */
+    config.headers.Authorization =
+      `Bearer ${token}`;
+
+    console.log(
+      "[API AUTH] Authorization token attached."
+    );
 
     return config;
   },
+
   (error) =>
-    Promise.reject(error),
+    Promise.reject(error)
 );
 
 /* =========================================================
    RESPONSE INTERCEPTOR
 
-   If backend says 401, refresh once and retry the request
-   using the new access token.
+   If backend returns 401:
+     1. Refresh Supabase session.
+     2. Get the new access token.
+     3. Replace Authorization.
+     4. Retry once.
 ========================================================= */
 
 api.interceptors.response.use(
@@ -175,85 +307,111 @@ api.interceptors.response.use(
 
   async (error) => {
     const originalRequest =
-      error.config;
+      error?.config;
+
+    const status =
+      error?.response?.status;
 
     if (
-      error.response?.status !== 401 ||
-      !originalRequest ||
-      originalRequest._authRetry
+      status !== 401 ||
+      !originalRequest
     ) {
       return Promise.reject(error);
     }
 
-    originalRequest._authRetry = true;
+    /*
+     * Prevent infinite retry loops.
+     */
+    if (
+      originalRequest._authRetry
+    ) {
+      console.error(
+        "[API AUTH] Second 401 received after authentication retry."
+      );
+
+      return Promise.reject(error);
+    }
+
+    originalRequest._authRetry =
+      true;
 
     console.warn(
-      "[API AUTH] Received 401. Refreshing Supabase session and retrying request...",
+      "[API AUTH] Backend returned 401. Refreshing Supabase session..."
     );
 
     try {
-      if (!refreshPromise) {
-        refreshPromise =
-          supabase.auth
-            .refreshSession()
-            .finally(() => {
-              refreshPromise = null;
-            });
-      }
+      const session =
+        await refreshSupabaseSession();
 
-      const {
-        data,
-        error: refreshError,
-      } = await refreshPromise;
-
-      if (refreshError) {
+      if (!session) {
         console.error(
-          "[API AUTH] Retry refresh failed:",
-          refreshError,
+          "[API AUTH] No session after refresh."
         );
 
-        return Promise.reject(
-          error,
-        );
+        return Promise.reject(error);
       }
 
       const newToken =
-        data?.session?.access_token;
+        session.access_token;
 
       if (!newToken) {
         console.error(
-          "[API AUTH] Refresh succeeded but no access token was returned.",
+          "[API AUTH] Refreshed session contains no access token."
         );
 
-        return Promise.reject(
-          error,
-        );
+        return Promise.reject(error);
       }
 
-      originalRequest.headers =
-        originalRequest.headers || {};
+      if (!originalRequest.headers) {
+        originalRequest.headers =
+          {};
+      }
 
+      /*
+       * IMPORTANT:
+       * Explicitly replace the old Authorization header.
+       */
       originalRequest.headers.Authorization =
         `Bearer ${newToken}`;
 
       console.log(
-        "[API AUTH] Retrying request with refreshed token.",
+        "[API AUTH] Retrying request with refreshed Supabase token."
       );
 
-      return api(
-        originalRequest,
+      return api.request(
+        originalRequest
       );
     } catch (refreshError) {
       console.error(
-        "[API AUTH] Failed to retry request:",
-        refreshError,
+        "[API AUTH] Authentication retry failed:",
+        refreshError
       );
 
-      return Promise.reject(
-        error,
+      return Promise.reject(error);
+    }
+  }
+);
+
+/* =========================================================
+   SUPABASE AUTH STATE LISTENER
+
+   Keep the browser Supabase client healthy when tokens are
+   refreshed automatically.
+========================================================= */
+
+supabase.auth.onAuthStateChange(
+  (event, session) => {
+    console.log(
+      "[API AUTH] Supabase auth event:",
+      event
+    );
+
+    if (session?.access_token) {
+      console.log(
+        "[API AUTH] Supabase session currently has an access token."
       );
     }
-  },
+  }
 );
 
 export default api;

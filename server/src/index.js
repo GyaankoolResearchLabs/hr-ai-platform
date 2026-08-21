@@ -45,7 +45,7 @@ import payBandsRouter from "./routes/payBands.js";
 import marketBenchmarkingRoutes from "./routes/marketBenchmarking.js";
 import compReviewCyclesRouter from "./routes/compReviewCycles.js";
 import shiftHolidayRouter from "./routes/shiftHoliday.js";
-
+import investigationsRoutes from "./routes/investigations.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -312,6 +312,10 @@ app.use(
   compReviewCyclesRouter,
 );
 
+app.use(
+  "/api/investigations",
+  investigationsRoutes
+);
 /* ---------------------------------------------------------
    WORKFORCE METRICS
 --------------------------------------------------------- */
