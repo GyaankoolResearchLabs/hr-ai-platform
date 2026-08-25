@@ -81,6 +81,7 @@ import MarketBenchmarking from "./pages/tools/MarketBenchmarking";
 import CompReviewCycleManager from "./pages/tools/CompReviewCycleManager";
 import ERCaseManagement from "./pages/tools/ERCaseManagement";
 import InvestigationTracker from "./pages/tools/InvestigationTracker";
+import PolicyLibraryTracker from "./pages/tools/PolicyLibraryTracker";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -426,6 +427,11 @@ export default function App() {
 <Route
   path="tools/investigation-tracker"
   element={<InvestigationTracker />}
+/>
+
+<Route
+  path="tools/policy-library-tracker"
+  element={<PolicyLibraryTracker />}
 />
             {/* =================================================
                 WORKFORCE METRICS

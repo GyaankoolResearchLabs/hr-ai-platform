@@ -46,6 +46,8 @@ import marketBenchmarkingRouter from "./routes/marketBenchmarking.js";
 import compReviewCyclesRouter from "./routes/compReviewCycles.js";
 import shiftHolidayRouter from "./routes/shiftHoliday.js";
 import investigationsRouter from "./routes/investigations.js";
+import policiesRouter from "./routes/policies.js";
+import policyLibraryRouter from "./routes/policyLibrary.js";
 
 /* =========================================================
    SERVICES
@@ -109,13 +111,6 @@ console.log(
 
 /* =========================================================
    CORS CONFIGURATION
-
-   IMPORTANT:
-   Express 5 does not safely accept "*" as a route path
-   in app.options("*", ...).
-
-   The cors middleware below already handles OPTIONS
-   preflight requests.
 ========================================================= */
 
 const corsOptions = {
@@ -184,9 +179,6 @@ const corsOptions = {
 
 /* =========================================================
    GLOBAL CORS
-
-   This handles normal requests and preflight OPTIONS
-   requests without app.options("*").
 ========================================================= */
 
 app.use(cors(corsOptions));
@@ -554,6 +546,25 @@ app.use(
 app.use(
   "/api/hr-requests",
   hrRequestsRouter,
+);
+
+/* ---------------------------------------------------------
+   POLICY LIBRARY & ACKNOWLEDGMENT TRACKER
+--------------------------------------------------------- */
+
+app.use(
+  "/api/policy-library",
+  policyLibraryRouter,
+);
+
+/* ---------------------------------------------------------
+   POLICIES
+   Existing policy API — keep intact.
+--------------------------------------------------------- */
+
+app.use(
+  "/api/policies",
+  policiesRouter,
 );
 
 /* =========================================================
