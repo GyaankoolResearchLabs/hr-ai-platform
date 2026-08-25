@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import api from "../../lib/api";
 import {
   AlertCircle,
+  ArrowLeft,
   Calendar,
   CheckCircle2,
   ChevronDown,
@@ -16,26 +18,6 @@ import {
   User,
   X,
 } from "lucide-react";
-
-const API_BASE =
-  import.meta.env.VITE_API_URL || "http://localhost:4000/api";
-
-const api = axios.create({
-  baseURL: API_BASE,
-});
-
-api.interceptors.request.use((config) => {
-  const token =
-    localStorage.getItem("access_token") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("supabase_access_token");
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
 
 const STATUS_OPTIONS = [
   { value: "open", label: "Open" },
@@ -179,11 +161,15 @@ const EMPTY_EVIDENCE_FORM = {
 };
 
 export default function InvestigationTracker() {
+  const navigate = useNavigate();
   const [investigations, setInvestigations] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [investigators, setInvestigators] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [employeesLoading, setEmployeesLoading] =
+    useState(true);
+  const [investigatorsLoading, setInvestigatorsLoading] =
     useState(true);
 
   const [error, setError] = useState("");
@@ -248,6 +234,30 @@ export default function InvestigationTracker() {
 
     return map;
   }, [employees]);
+
+  const investigatorMap = useMemo(() => {
+    const map = {};
+
+    investigators.forEach((investigator) => {
+      map[investigator.user_id] = investigator;
+    });
+
+    return map;
+  }, [investigators]);
+
+  function getInvestigatorName(userId) {
+    if (!userId) return "Not assigned";
+
+    const investigator = investigatorMap[userId];
+
+    if (!investigator) return userId;
+
+    return (
+      investigator.name ||
+      investigator.email ||
+      userId
+    );
+  }
 
   const filteredInvestigations = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -361,6 +371,39 @@ export default function InvestigationTracker() {
     }
   }
 
+  async function loadInvestigators() {
+    try {
+      setInvestigatorsLoading(true);
+
+      const response = await api.get(
+        "/investigations/assignees"
+      );
+
+      const data =
+        response.data?.assignees ||
+        response.data?.data ||
+        [];
+
+      setInvestigators(
+        Array.isArray(data) ? data : []
+      );
+    } catch (err) {
+      console.error(
+        "[InvestigationTracker] Load investigators error:",
+        err
+      );
+
+      setError(
+        getErrorMessage(
+          err,
+          "Failed to load investigators."
+        )
+      );
+    } finally {
+      setInvestigatorsLoading(false);
+    }
+  }
+
   async function loadEmployees() {
     try {
       setEmployeesLoading(true);
@@ -444,6 +487,7 @@ export default function InvestigationTracker() {
 
   useEffect(() => {
     loadEmployees();
+    loadInvestigators();
   }, []);
 
   useEffect(() => {
@@ -968,7 +1012,17 @@ export default function InvestigationTracker() {
     <div className="min-w-0 w-full space-y-6">
       {/* HEADER */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </button>
+
+          <div>
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
               <Shield size={22} />
@@ -984,6 +1038,7 @@ export default function InvestigationTracker() {
                 evidence, findings and resolutions.
               </p>
             </div>
+          </div>
           </div>
         </div>
 
@@ -1329,6 +1384,8 @@ export default function InvestigationTracker() {
             form={form}
             employees={employees}
             employeesLoading={employeesLoading}
+            investigators={investigators}
+            investigatorsLoading={investigatorsLoading}
             onChange={handleFormChange}
             onSubmit={handleCreateOrUpdate}
             onCancel={closeCreate}
@@ -1419,6 +1476,10 @@ export default function InvestigationTracker() {
                   employeesLoading={
                     employeesLoading
                   }
+                  investigators={investigators}
+                  investigatorsLoading={
+                    investigatorsLoading
+                  }
                   onChange={handleFormChange}
                   onSubmit={
                     handleCreateOrUpdate
@@ -1462,8 +1523,9 @@ export default function InvestigationTracker() {
                       <DetailItem
                         label="Investigator"
                         value={
-                          selectedInvestigation.investigator_id ||
-                          "Not assigned"
+                          getInvestigatorName(
+                            selectedInvestigation.investigator_id
+                          )
                         }
                       />
 
@@ -2060,6 +2122,8 @@ function InvestigationForm({
   form,
   employees,
   employeesLoading,
+  investigators,
+  investigatorsLoading,
   onChange,
   onSubmit,
   onCancel,
@@ -2133,16 +2197,20 @@ function InvestigationForm({
           name="investigator_id"
           value={form.investigator_id}
           onChange={onChange}
+          disabled={investigatorsLoading}
           options={[
             {
               value: "",
-              label: "Assign later",
+              label: investigatorsLoading
+                ? "Loading investigators..."
+                : "Assign later",
             },
-            ...employees.map((employee) => ({
-              value: employee.id,
-              label: getEmployeeName(
-                employee
-              ),
+            ...investigators.map((investigator) => ({
+              value: investigator.user_id,
+              label:
+                investigator.name ||
+                investigator.email ||
+                investigator.user_id,
             })),
           ]}
         />

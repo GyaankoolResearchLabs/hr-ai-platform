@@ -40,6 +40,8 @@ function normalizePriority(value) {
 function normalizeStatus(value) {
   const allowed = [
     "open",
+    "under_review",
+    "investigation",
     "in_progress",
     "pending",
     "closed",
@@ -113,9 +115,7 @@ async function resolveOrganization(req) {
     return null;
   }
 
-  return await getOrganizationForUser(
-    req.user.id
-  );
+  return await getOrganizationForUser(req.user.id);
 }
 
 async function verifyInvestigation(
@@ -156,7 +156,9 @@ async function verifyEmployeeBelongsToOrganization(
     error,
   } = await supabaseAdmin
     .from("employees")
-    .select("id, full_name, email, department, title")
+    .select(
+      "id, full_name, email, department, title"
+    )
     .eq("id", employeeId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -195,10 +197,6 @@ async function verifyMemberBelongsToOrganization(
 
 /* =========================================================
    ORGANIZATION CONTEXT
-
-   Authentication still comes from the shared auth middleware.
-   Once authenticated, this resolves the organization using
-   the same organization lookup pattern used by other tools.
 ========================================================= */
 
 router.use(requireAuth);
@@ -234,7 +232,6 @@ router.use(async (req, res, next) => {
 
 /* =========================================================
    GET /api/investigations
-   Get all investigations
 ========================================================= */
 
 router.get("/", async (req, res) => {
@@ -294,364 +291,248 @@ router.get("/", async (req, res) => {
 });
 
 /* =========================================================
-   GET /api/investigations/:id
-   Get one investigation
+   GET /api/investigations/assignees
 ========================================================= */
 
-router.get("/:id", async (req, res) => {
-  try {
-    const organizationId =
-      getOrganizationId(req);
+router.get(
+  "/assignees",
+  async (req, res) => {
+    try {
+      const organizationId =
+        getOrganizationId(req);
 
-    if (!organizationId) {
-      return res.status(403).json({
-        message:
-          "Organization could not be determined.",
-      });
-    }
-
-    const investigation =
-      await verifyInvestigation(
-        organizationId,
-        req.params.id
-      );
-
-    if (!investigation) {
-      return res.status(404).json({
-        message:
-          "Investigation not found.",
-      });
-    }
-
-    return res.status(200).json({
-      investigation,
-    });
-  } catch (error) {
-    console.error(
-      "[Investigations] Get single error:",
-      error
-    );
-
-    return res.status(500).json({
-      message:
-        "Unexpected error while fetching investigation.",
-      error: error.message,
-    });
-  }
-});
-
-/* =========================================================
-   POST /api/investigations
-   Create investigation
-========================================================= */
-
-router.post("/", async (req, res) => {
-  try {
-    const organizationId =
-      getOrganizationId(req);
-
-    const userId =
-      req.user?.id || null;
-
-    if (!organizationId) {
-      return res.status(403).json({
-        message:
-          "Organization could not be determined.",
-      });
-    }
-
-    const {
-      investigation_number,
-      employee_id,
-      title,
-      description,
-      investigation_type,
-      priority,
-      status,
-      investigator_id,
-      opened_at,
-      target_date,
-      findings,
-      resolution,
-      notes,
-    } = req.body || {};
-
-    if (!employee_id) {
-      return res.status(400).json({
-        message:
-          "Employee is required.",
-      });
-    }
-
-    if (!title || !String(title).trim()) {
-      return res.status(400).json({
-        message:
-          "Investigation title is required.",
-      });
-    }
-
-    const employee =
-      await verifyEmployeeBelongsToOrganization(
-        organizationId,
-        employee_id
-      );
-
-    if (!employee) {
-      return res.status(400).json({
-        message:
-          "Selected employee does not belong to this organization.",
-      });
-    }
-
-    if (investigator_id) {
-      const investigator =
-        await verifyMemberBelongsToOrganization(
-          organizationId,
-          investigator_id
-        );
-
-      if (!investigator) {
-        return res.status(400).json({
+      if (!organizationId) {
+        return res.status(403).json({
           message:
-            "Selected investigator does not belong to this organization.",
+            "Organization could not be determined.",
         });
       }
-    }
 
-    let investigationNumber =
-      normalizeString(
-        investigation_number
-      );
-
-    if (!investigationNumber) {
       const {
-        count,
-        error: countError,
+        data: members,
+        error: membersError,
       } = await supabaseAdmin
-        .from("investigations")
-        .select("id", {
-          count: "exact",
-          head: true,
-        })
+        .from("organization_members")
+        .select("user_id, role")
         .eq(
           "organization_id",
           organizationId
-        );
+        )
+        .order("created_at", {
+          ascending: true,
+        });
 
-      if (countError) {
+      if (membersError) {
         console.error(
-          "[Investigations] Number generation error:",
-          countError
+          "[Investigations] Assignees lookup error:",
+          membersError
         );
 
         return res.status(500).json({
           message:
-            "Failed to generate investigation number.",
-          error: countError.message,
+            "Failed to load investigators.",
+          error:
+            membersError.message,
         });
       }
 
-      investigationNumber =
-        `INV-${String(
-          (count || 0) + 1
-        ).padStart(5, "0")}`;
-    }
+      if (
+        !members ||
+        members.length === 0
+      ) {
+        return res.status(200).json({
+          assignees: [],
+        });
+      }
 
-    const investigationPayload = {
-      organization_id:
-        organizationId,
+      const {
+        data: users,
+        error: usersError,
+      } =
+        await supabaseAdmin.auth.admin.listUsers(
+          {
+            page: 1,
+            perPage: 1000,
+          }
+        );
 
-      investigation_number:
-        investigationNumber,
+      if (usersError) {
+        console.error(
+          "[Investigations] Auth users lookup error:",
+          usersError
+        );
 
-      employee_id,
+        return res.status(500).json({
+          message:
+            "Failed to load investigator details.",
+          error:
+            usersError.message,
+        });
+      }
 
-      title:
-        String(title).trim(),
+      const userMap = new Map(
+        (users?.users || []).map(
+          (user) => [
+            user.id,
+            user,
+          ]
+        )
+      );
 
-      description:
-        normalizeString(description),
+      const assignees =
+        members.map((member) => {
+          const user =
+            userMap.get(
+              member.user_id
+            );
 
-      investigation_type:
-        normalizeInvestigationType(
-          investigation_type
-        ),
+          const metadata =
+            user?.user_metadata || {};
 
-      priority:
-        normalizePriority(priority),
+          const name =
+            metadata.full_name ||
+            metadata.name ||
+            metadata.display_name ||
+            user?.email ||
+            member.user_id;
 
-      status:
-        normalizeStatus(status),
+          return {
+            user_id:
+              member.user_id,
 
-      investigator_id:
-        investigator_id || null,
+            role:
+              member.role,
 
-      opened_at:
-        opened_at ||
-        new Date().toISOString(),
+            name,
 
-      target_date:
-        target_date || null,
+            email:
+              user?.email || null,
+          };
+        });
 
-      findings:
-        normalizeString(findings),
-
-      resolution:
-        normalizeString(resolution),
-
-      notes:
-        normalizeString(notes),
-
-      created_by:
-        userId,
-
-      created_at:
-        new Date().toISOString(),
-
-      updated_at:
-        new Date().toISOString(),
-    };
-
-    const {
-      data: investigation,
-      error: createError,
-    } = await supabaseAdmin
-      .from("investigations")
-      .insert(
-        investigationPayload
-      )
-      .select("*")
-      .single();
-
-    if (createError) {
+      return res.status(200).json({
+        assignees,
+      });
+    } catch (error) {
       console.error(
-        "[Investigations] Create error:",
-        createError
+        "[Investigations] Unexpected assignees error:",
+        error
       );
 
       return res.status(500).json({
         message:
-          "Failed to create investigation.",
+          "Unexpected error while loading investigators.",
         error:
-          createError.message,
-        code:
-          createError.code,
+          error.message,
       });
     }
-
-    /*
-     * Create initial timeline event.
-     */
-
-    const {
-      error: eventError,
-    } = await supabaseAdmin
-      .from("investigation_events")
-      .insert({
-        organization_id:
-          organizationId,
-
-        investigation_id:
-          investigation.id,
-
-        event_type:
-          "created",
-
-        title:
-          "Investigation created",
-
-        description:
-          "Investigation record created.",
-
-        event_at:
-          investigation.opened_at ||
-          new Date().toISOString(),
-
-        created_by:
-          userId,
-      });
-
-    if (eventError) {
-      console.error(
-        "[Investigations] Initial event creation error:",
-        eventError
-      );
-    }
-
-    return res.status(201).json({
-      message:
-        "Investigation created successfully.",
-
-      investigation,
-    });
-  } catch (error) {
-    console.error(
-      "[Investigations] Unexpected create error:",
-      error
-    );
-
-    return res.status(500).json({
-      message:
-        "Unexpected error while creating investigation.",
-      error:
-        error.message,
-    });
   }
-});
+);
 
 /* =========================================================
-   PUT /api/investigations/:id
-   Update investigation
+   GET /api/investigations/:id
 ========================================================= */
 
-router.put("/:id", async (req, res) => {
-  try {
-    const organizationId =
-      getOrganizationId(req);
+router.get(
+  "/:id",
+  async (req, res) => {
+    try {
+      const organizationId =
+        getOrganizationId(req);
 
-    if (!organizationId) {
-      return res.status(403).json({
-        message:
-          "Organization could not be determined.",
+      if (!organizationId) {
+        return res.status(403).json({
+          message:
+            "Organization could not be determined.",
+        });
+      }
+
+      const investigation =
+        await verifyInvestigation(
+          organizationId,
+          req.params.id
+        );
+
+      if (!investigation) {
+        return res.status(404).json({
+          message:
+            "Investigation not found.",
+        });
+      }
+
+      return res.status(200).json({
+        investigation,
       });
-    }
-
-    const existing =
-      await verifyInvestigation(
-        organizationId,
-        req.params.id
+    } catch (error) {
+      console.error(
+        "[Investigations] Get single error:",
+        error
       );
 
-    if (!existing) {
-      return res.status(404).json({
+      return res.status(500).json({
         message:
-          "Investigation not found.",
+          "Unexpected error while fetching investigation.",
+        error:
+          error.message,
       });
     }
+  }
+);
 
-    const {
-      employee_id,
-      title,
-      description,
-      investigation_type,
-      priority,
-      status,
-      investigator_id,
-      opened_at,
-      target_date,
-      findings,
-      resolution,
-      notes,
-    } = req.body || {};
+/* =========================================================
+   POST /api/investigations
+========================================================= */
 
-    if (!title || !String(title).trim()) {
-      return res.status(400).json({
-        message:
-          "Investigation title is required.",
-      });
-    }
+router.post(
+  "/",
+  async (req, res) => {
+    try {
+      const organizationId =
+        getOrganizationId(req);
 
-    if (employee_id) {
+      const userId =
+        req.user?.id || null;
+
+      if (!organizationId) {
+        return res.status(403).json({
+          message:
+            "Organization could not be determined.",
+        });
+      }
+
+      const {
+        investigation_number,
+        employee_id,
+        title,
+        description,
+        investigation_type,
+        priority,
+        status,
+        investigator_id,
+        opened_at,
+        target_date,
+        findings,
+        resolution,
+        notes,
+      } = req.body || {};
+
+      if (!employee_id) {
+        return res.status(400).json({
+          message:
+            "Employee is required.",
+        });
+      }
+
+      if (
+        !title ||
+        !String(title).trim()
+      ) {
+        return res.status(400).json({
+          message:
+            "Investigation title is required.",
+        });
+      }
+
       const employee =
         await verifyEmployeeBelongsToOrganization(
           organizationId,
@@ -664,149 +545,426 @@ router.put("/:id", async (req, res) => {
             "Selected employee does not belong to this organization.",
         });
       }
-    }
 
-    if (investigator_id) {
-      const investigator =
-        await verifyMemberBelongsToOrganization(
-          organizationId,
-          investigator_id
+      if (investigator_id) {
+        const investigator =
+          await verifyMemberBelongsToOrganization(
+            organizationId,
+            investigator_id
+          );
+
+        if (!investigator) {
+          return res.status(400).json({
+            message:
+              "Selected investigator does not belong to this organization.",
+          });
+        }
+      }
+
+      let investigationNumber =
+        normalizeString(
+          investigation_number
         );
 
-      if (!investigator) {
-        return res.status(400).json({
+      if (!investigationNumber) {
+        const {
+          count,
+          error: countError,
+        } =
+          await supabaseAdmin
+            .from("investigations")
+            .select("id", {
+              count: "exact",
+              head: true,
+            })
+            .eq(
+              "organization_id",
+              organizationId
+            );
+
+        if (countError) {
+          console.error(
+            "[Investigations] Number generation error:",
+            countError
+          );
+
+          return res.status(500).json({
+            message:
+              "Failed to generate investigation number.",
+            error:
+              countError.message,
+          });
+        }
+
+        investigationNumber =
+          `INV-${String(
+            (count || 0) + 1
+          ).padStart(5, "0")}`;
+      }
+
+      const investigationPayload = {
+        organization_id:
+          organizationId,
+
+        investigation_number:
+          investigationNumber,
+
+        employee_id,
+
+        title:
+          String(title).trim(),
+
+        description:
+          normalizeString(
+            description
+          ),
+
+        investigation_type:
+          normalizeInvestigationType(
+            investigation_type
+          ),
+
+        priority:
+          normalizePriority(priority),
+
+        status:
+          normalizeStatus(status),
+
+        investigator_id:
+          investigator_id || null,
+
+        opened_at:
+          opened_at ||
+          new Date().toISOString(),
+
+        target_date:
+          target_date || null,
+
+        findings:
+          normalizeString(findings),
+
+        resolution:
+          normalizeString(resolution),
+
+        notes:
+          normalizeString(notes),
+
+        created_by:
+          userId,
+
+        created_at:
+          new Date().toISOString(),
+
+        updated_at:
+          new Date().toISOString(),
+      };
+
+      const {
+        data: investigation,
+        error: createError,
+      } =
+        await supabaseAdmin
+          .from("investigations")
+          .insert(
+            investigationPayload
+          )
+          .select("*")
+          .single();
+
+      if (createError) {
+        console.error(
+          "[Investigations] Create error:",
+          createError
+        );
+
+        return res.status(500).json({
           message:
-            "Selected investigator does not belong to this organization.",
+            "Failed to create investigation.",
+          error:
+            createError.message,
+          code:
+            createError.code,
         });
       }
-    }
 
-    const updates = {
-      employee_id:
-        employee_id ||
-        existing.employee_id,
+      const {
+        error: eventError,
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_events"
+          )
+          .insert({
+            organization_id:
+              organizationId,
 
-      title:
-        String(title).trim(),
+            investigation_id:
+              investigation.id,
 
-      description:
-        normalizeString(description),
+            event_type:
+              "created",
 
-      investigation_type:
-        normalizeInvestigationType(
-          investigation_type
-        ),
+            title:
+              "Investigation created",
 
-      priority:
-        normalizePriority(priority),
+            description:
+              "Investigation record created.",
 
-      status:
-        normalizeStatus(status),
+            event_at:
+              investigation.opened_at ||
+              new Date().toISOString(),
 
-      investigator_id:
-        investigator_id || null,
+            created_by:
+              userId,
+          });
 
-      opened_at:
-        opened_at ||
-        existing.opened_at,
+      if (eventError) {
+        console.error(
+          "[Investigations] Initial event creation error:",
+          eventError
+        );
+      }
 
-      target_date:
-        target_date || null,
+      return res.status(201).json({
+        message:
+          "Investigation created successfully.",
 
-      findings:
-        normalizeString(findings),
-
-      resolution:
-        normalizeString(resolution),
-
-      notes:
-        normalizeString(notes),
-
-      updated_at:
-        new Date().toISOString(),
-    };
-
-    const {
-      data: investigation,
-      error,
-    } = await supabaseAdmin
-      .from("investigations")
-      .update(updates)
-      .eq(
-        "id",
-        req.params.id
-      )
-      .eq(
-        "organization_id",
-        organizationId
-      )
-      .select("*")
-      .single();
-
-    if (error) {
+        investigation,
+      });
+    } catch (error) {
       console.error(
-        "[Investigations] Update error:",
+        "[Investigations] Unexpected create error:",
         error
       );
 
       return res.status(500).json({
         message:
-          "Failed to update investigation.",
+          "Unexpected error while creating investigation.",
         error:
           error.message,
       });
     }
-
-    if (
-      existing.status !==
-      investigation.status
-    ) {
-      await supabaseAdmin
-        .from("investigation_events")
-        .insert({
-          organization_id:
-            organizationId,
-
-          investigation_id:
-            investigation.id,
-
-          event_type:
-            "status_change",
-
-          title:
-            "Investigation status changed",
-
-          description:
-            `Status changed from "${existing.status}" to "${investigation.status}".`,
-
-          event_at:
-            new Date().toISOString(),
-
-          created_by:
-            req.user?.id || null,
-        });
-    }
-
-    return res.status(200).json({
-      message:
-        "Investigation updated successfully.",
-
-      investigation,
-    });
-  } catch (error) {
-    console.error(
-      "[Investigations] Unexpected update error:",
-      error
-    );
-
-    return res.status(500).json({
-      message:
-        "Unexpected error while updating investigation.",
-      error:
-        error.message,
-    });
   }
-});
+);
+
+/* =========================================================
+   PUT /api/investigations/:id
+========================================================= */
+
+router.put(
+  "/:id",
+  async (req, res) => {
+    try {
+      const organizationId =
+        getOrganizationId(req);
+
+      if (!organizationId) {
+        return res.status(403).json({
+          message:
+            "Organization could not be determined.",
+        });
+      }
+
+      const existing =
+        await verifyInvestigation(
+          organizationId,
+          req.params.id
+        );
+
+      if (!existing) {
+        return res.status(404).json({
+          message:
+            "Investigation not found.",
+        });
+      }
+
+      const {
+        employee_id,
+        title,
+        description,
+        investigation_type,
+        priority,
+        status,
+        investigator_id,
+        opened_at,
+        target_date,
+        findings,
+        resolution,
+        notes,
+      } = req.body || {};
+
+      if (
+        !title ||
+        !String(title).trim()
+      ) {
+        return res.status(400).json({
+          message:
+            "Investigation title is required.",
+        });
+      }
+
+      if (employee_id) {
+        const employee =
+          await verifyEmployeeBelongsToOrganization(
+            organizationId,
+            employee_id
+          );
+
+        if (!employee) {
+          return res.status(400).json({
+            message:
+              "Selected employee does not belong to this organization.",
+          });
+        }
+      }
+
+      if (investigator_id) {
+        const investigator =
+          await verifyMemberBelongsToOrganization(
+            organizationId,
+            investigator_id
+          );
+
+        if (!investigator) {
+          return res.status(400).json({
+            message:
+              "Selected investigator does not belong to this organization.",
+          });
+        }
+      }
+
+      const updates = {
+        employee_id:
+          employee_id ||
+          existing.employee_id,
+
+        title:
+          String(title).trim(),
+
+        description:
+          normalizeString(
+            description
+          ),
+
+        investigation_type:
+          normalizeInvestigationType(
+            investigation_type
+          ),
+
+        priority:
+          normalizePriority(priority),
+
+        status:
+          normalizeStatus(status),
+
+        investigator_id:
+          investigator_id || null,
+
+        opened_at:
+          opened_at ||
+          existing.opened_at,
+
+        target_date:
+          target_date || null,
+
+        findings:
+          normalizeString(findings),
+
+        resolution:
+          normalizeString(resolution),
+
+        notes:
+          normalizeString(notes),
+
+        updated_at:
+          new Date().toISOString(),
+      };
+
+      const {
+        data: investigation,
+        error,
+      } =
+        await supabaseAdmin
+          .from("investigations")
+          .update(updates)
+          .eq(
+            "id",
+            req.params.id
+          )
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .select("*")
+          .single();
+
+      if (error) {
+        console.error(
+          "[Investigations] Update error:",
+          error
+        );
+
+        return res.status(500).json({
+          message:
+            "Failed to update investigation.",
+          error:
+            error.message,
+        });
+      }
+
+      if (
+        existing.status !==
+        investigation.status
+      ) {
+        await supabaseAdmin
+          .from(
+            "investigation_events"
+          )
+          .insert({
+            organization_id:
+              organizationId,
+
+            investigation_id:
+              investigation.id,
+
+            event_type:
+              "status_change",
+
+            title:
+              "Investigation status changed",
+
+            description:
+              `Status changed from "${existing.status}" to "${investigation.status}".`,
+
+            event_at:
+              new Date().toISOString(),
+
+            created_by:
+              req.user?.id || null,
+          });
+      }
+
+      return res.status(200).json({
+        message:
+          "Investigation updated successfully.",
+
+        investigation,
+      });
+    } catch (error) {
+      console.error(
+        "[Investigations] Unexpected update error:",
+        error
+      );
+
+      return res.status(500).json({
+        message:
+          "Unexpected error while updating investigation.",
+        error:
+          error.message,
+      });
+    }
+  }
+);
 
 /* =========================================================
    PATCH /api/investigations/:id/status
@@ -852,28 +1010,42 @@ router.patch(
         });
       }
 
+      if (
+        existing.status ===
+        normalizedStatus
+      ) {
+        return res.status(200).json({
+          message:
+            "Investigation status is already set to the selected status.",
+
+          investigation:
+            existing,
+        });
+      }
+
       const {
         data: investigation,
         error,
-      } = await supabaseAdmin
-        .from("investigations")
-        .update({
-          status:
-            normalizedStatus,
+      } =
+        await supabaseAdmin
+          .from("investigations")
+          .update({
+            status:
+              normalizedStatus,
 
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq(
-          "id",
-          req.params.id
-        )
-        .eq(
-          "organization_id",
-          organizationId
-        )
-        .select("*")
-        .single();
+            updated_at:
+              new Date().toISOString(),
+          })
+          .eq(
+            "id",
+            req.params.id
+          )
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .select("*")
+          .single();
 
       if (error) {
         console.error(
@@ -890,7 +1062,9 @@ router.patch(
       }
 
       await supabaseAdmin
-        .from("investigation_events")
+        .from(
+          "investigation_events"
+        )
         .insert({
           organization_id:
             organizationId,
@@ -968,18 +1142,22 @@ router.delete(
       }
 
       const {
-        error: evidenceDeleteError,
-      } = await supabaseAdmin
-        .from("investigation_evidence")
-        .delete()
-        .eq(
-          "investigation_id",
-          req.params.id
-        )
-        .eq(
-          "organization_id",
-          organizationId
-        );
+        error:
+          evidenceDeleteError,
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_evidence"
+          )
+          .delete()
+          .eq(
+            "investigation_id",
+            req.params.id
+          )
+          .eq(
+            "organization_id",
+            organizationId
+          );
 
       if (evidenceDeleteError) {
         console.error(
@@ -996,18 +1174,22 @@ router.delete(
       }
 
       const {
-        error: eventsDeleteError,
-      } = await supabaseAdmin
-        .from("investigation_events")
-        .delete()
-        .eq(
-          "investigation_id",
-          req.params.id
-        )
-        .eq(
-          "organization_id",
-          organizationId
-        );
+        error:
+          eventsDeleteError,
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_events"
+          )
+          .delete()
+          .eq(
+            "investigation_id",
+            req.params.id
+          )
+          .eq(
+            "organization_id",
+            organizationId
+          );
 
       if (eventsDeleteError) {
         console.error(
@@ -1025,17 +1207,18 @@ router.delete(
 
       const {
         error: deleteError,
-      } = await supabaseAdmin
-        .from("investigations")
-        .delete()
-        .eq(
-          "id",
-          req.params.id
-        )
-        .eq(
-          "organization_id",
-          organizationId
-        );
+      } =
+        await supabaseAdmin
+          .from("investigations")
+          .delete()
+          .eq(
+            "id",
+            req.params.id
+          )
+          .eq(
+            "organization_id",
+            organizationId
+          );
 
       if (deleteError) {
         console.error(
@@ -1105,20 +1288,23 @@ router.get(
       const {
         data,
         error,
-      } = await supabaseAdmin
-        .from("investigation_events")
-        .select("*")
-        .eq(
-          "organization_id",
-          organizationId
-        )
-        .eq(
-          "investigation_id",
-          req.params.id
-        )
-        .order("event_at", {
-          ascending: false,
-        });
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_events"
+          )
+          .select("*")
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .eq(
+            "investigation_id",
+            req.params.id
+          )
+          .order("event_at", {
+            ascending: false,
+          });
 
       if (error) {
         console.error(
@@ -1191,7 +1377,10 @@ router.post(
         event_at,
       } = req.body || {};
 
-      if (!title || !String(title).trim()) {
+      if (
+        !title ||
+        !String(title).trim()
+      ) {
         return res.status(400).json({
           message:
             "Event title is required.",
@@ -1227,35 +1416,38 @@ router.post(
       const {
         data,
         error,
-      } = await supabaseAdmin
-        .from("investigation_events")
-        .insert({
-          organization_id:
-            organizationId,
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_events"
+          )
+          .insert({
+            organization_id:
+              organizationId,
 
-          investigation_id:
-            req.params.id,
+            investigation_id:
+              req.params.id,
 
-          event_type:
-            normalizedType,
+            event_type:
+              normalizedType,
 
-          title:
-            String(title).trim(),
+            title:
+              String(title).trim(),
 
-          description:
-            normalizeString(
-              description
-            ),
+            description:
+              normalizeString(
+                description
+              ),
 
-          event_at:
-            event_at ||
-            new Date().toISOString(),
+            event_at:
+              event_at ||
+              new Date().toISOString(),
 
-          created_by:
-            req.user?.id || null,
-        })
-        .select("*")
-        .single();
+            created_by:
+              req.user?.id || null,
+          })
+          .select("*")
+          .single();
 
       if (error) {
         console.error(
@@ -1327,20 +1519,23 @@ router.get(
       const {
         data,
         error,
-      } = await supabaseAdmin
-        .from("investigation_evidence")
-        .select("*")
-        .eq(
-          "organization_id",
-          organizationId
-        )
-        .eq(
-          "investigation_id",
-          req.params.id
-        )
-        .order("created_at", {
-          ascending: false,
-        });
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_evidence"
+          )
+          .select("*")
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .eq(
+            "investigation_id",
+            req.params.id
+          )
+          .order("created_at", {
+            ascending: false,
+          });
 
       if (error) {
         console.error(
@@ -1415,7 +1610,10 @@ router.post(
         collected_by,
       } = req.body || {};
 
-      if (!title || !String(title).trim()) {
+      if (
+        !title ||
+        !String(title).trim()
+      ) {
         return res.status(400).json({
           message:
             "Evidence title is required.",
@@ -1470,39 +1668,42 @@ router.post(
       const {
         data,
         error,
-      } = await supabaseAdmin
-        .from("investigation_evidence")
-        .insert({
-          organization_id:
-            organizationId,
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_evidence"
+          )
+          .insert({
+            organization_id:
+              organizationId,
 
-          investigation_id:
-            req.params.id,
+            investigation_id:
+              req.params.id,
 
-          evidence_type:
-            normalizedType,
+            evidence_type:
+              normalizedType,
 
-          title:
-            String(title).trim(),
+            title:
+              String(title).trim(),
 
-          description:
-            normalizeString(
-              description
-            ),
+            description:
+              normalizeString(
+                description
+              ),
 
-          source_url:
-            normalizeString(
-              source_url
-            ),
+            source_url:
+              normalizeString(
+                source_url
+              ),
 
-          collected_at:
-            collected_at || null,
+            collected_at:
+              collected_at || null,
 
-          collected_by:
-            collectorId,
-        })
-        .select("*")
-        .single();
+            collected_by:
+              collectorId,
+          })
+          .select("*")
+          .single();
 
       if (error) {
         console.error(
@@ -1518,12 +1719,10 @@ router.post(
         });
       }
 
-      /*
-       * Automatically add evidence to timeline.
-       */
-
       await supabaseAdmin
-        .from("investigation_events")
+        .from(
+          "investigation_events"
+        )
         .insert({
           organization_id:
             organizationId,
@@ -1607,22 +1806,25 @@ router.delete(
         data: evidence,
         error:
           evidenceLookupError,
-      } = await supabaseAdmin
-        .from("investigation_evidence")
-        .select("id")
-        .eq(
-          "id",
-          req.params.evidenceId
-        )
-        .eq(
-          "organization_id",
-          organizationId
-        )
-        .eq(
-          "investigation_id",
-          req.params.id
-        )
-        .maybeSingle();
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_evidence"
+          )
+          .select("id")
+          .eq(
+            "id",
+            req.params.evidenceId
+          )
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .eq(
+            "investigation_id",
+            req.params.id
+          )
+          .maybeSingle();
 
       if (evidenceLookupError) {
         return res.status(500).json({
@@ -1642,21 +1844,24 @@ router.delete(
 
       const {
         error: deleteError,
-      } = await supabaseAdmin
-        .from("investigation_evidence")
-        .delete()
-        .eq(
-          "id",
-          req.params.evidenceId
-        )
-        .eq(
-          "organization_id",
-          organizationId
-        )
-        .eq(
-          "investigation_id",
-          req.params.id
-        );
+      } =
+        await supabaseAdmin
+          .from(
+            "investigation_evidence"
+          )
+          .delete()
+          .eq(
+            "id",
+            req.params.evidenceId
+          )
+          .eq(
+            "organization_id",
+            organizationId
+          )
+          .eq(
+            "investigation_id",
+            req.params.id
+          );
 
       if (deleteError) {
         console.error(
