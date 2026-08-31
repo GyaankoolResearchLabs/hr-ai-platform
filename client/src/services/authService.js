@@ -3,16 +3,16 @@ import { supabase } from "../lib/supabaseClient";
 /*
  * =========================================================
  * AUTH SERVICE
+ * =========================================================
  *
  * Single source of truth for Supabase authentication.
  *
- * Important:
- * - Always passes a real string email to Supabase.
- * - Validates the JWT itself instead of trusting only
- *   session.expires_at.
- * - Refreshes expired / nearly expired access tokens.
- * - Keeps the rest of the application independent from
- *   Supabase session-storage details.
+ * Login:
+ *   Browser -> Supabase Auth
+ *
+ * API requests:
+ *   Browser -> Express API with Supabase access token
+ *
  * =========================================================
  */
 
@@ -38,12 +38,10 @@ function normalizePassword(value) {
   return value;
 }
 
-/*
- * Decode the JWT payload without verifying it.
- *
- * This is ONLY used to inspect exp locally.
- * Actual authentication is still performed by Supabase.
- */
+/* =========================================================
+   JWT HELPERS
+========================================================= */
+
 function decodeJwtPayload(token) {
   try {
     if (
@@ -77,9 +75,10 @@ function decodeJwtPayload(token) {
         .map(
           (char) =>
             "%" +
-            ("00" +
-              char.charCodeAt(0).toString(16))
-              .slice(-2)
+            (
+              "00" +
+              char.charCodeAt(0).toString(16)
+            ).slice(-2)
         )
         .join("")
     );
@@ -123,14 +122,179 @@ function getTokenSecondsRemaining(token) {
 }
 
 /* =========================================================
+   SIGN IN
+========================================================= */
+
+async function signIn(
+  emailOrCredentials,
+  passwordArgument
+) {
+  let email = "";
+  let password = "";
+
+  /*
+   * Support both:
+   *
+   * signIn(email, password)
+   *
+   * and:
+   *
+   * signIn({
+   *   email,
+   *   password
+   * })
+   */
+
+  if (
+    emailOrCredentials &&
+    typeof emailOrCredentials === "object"
+  ) {
+    email = normalizeEmail(
+      emailOrCredentials.email
+    );
+
+    password = normalizePassword(
+      emailOrCredentials.password
+    );
+  } else {
+    email = normalizeEmail(
+      emailOrCredentials
+    );
+
+    password = normalizePassword(
+      passwordArgument
+    );
+  }
+
+  console.log(
+    "[AUTH SERVICE] Sign-in requested."
+  );
+
+  console.log(
+    "[AUTH SERVICE] Email:",
+    email || "MISSING"
+  );
+
+  console.log(
+    "[AUTH SERVICE] Password supplied:",
+    password ? "YES" : "NO"
+  );
+
+  if (!email) {
+    throw new Error(
+      "Email is required."
+    );
+  }
+
+  if (!password) {
+    throw new Error(
+      "Password is required."
+    );
+  }
+
+  try {
+    /*
+     * IMPORTANT:
+     *
+     * Login directly through Supabase.
+     *
+     * Do NOT call:
+     *
+     *   /api/auth/login
+     *
+     * The Express server is not responsible for
+     * authenticating the user's password.
+     */
+
+    console.log(
+      "[AUTH SERVICE] Sending credentials directly to Supabase..."
+    );
+
+    const {
+      data,
+      error,
+    } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+    if (error) {
+      console.error(
+        "[AUTH SERVICE] Supabase sign-in failed:",
+        error
+      );
+
+      throw new Error(
+        error.message ||
+          "Unable to sign in. Please check your credentials."
+      );
+    }
+
+    const session =
+      data?.session || null;
+
+    const user =
+      data?.user ||
+      session?.user ||
+      null;
+
+    if (!session) {
+      throw new Error(
+        "Login succeeded but no Supabase session was returned."
+      );
+    }
+
+    if (!session.access_token) {
+      throw new Error(
+        "Login succeeded but no access token was returned."
+      );
+    }
+
+    console.log(
+      "[AUTH SERVICE] Sign-in successful."
+    );
+
+    console.log(
+      "[AUTH SERVICE] User ID:",
+      user?.id
+    );
+
+    console.log(
+      "[AUTH SERVICE] User email:",
+      user?.email
+    );
+
+    console.log(
+      "[AUTH SERVICE] JWT seconds remaining:",
+      getTokenSecondsRemaining(
+        session.access_token
+      )
+    );
+
+    return {
+      session,
+      user,
+    };
+  } catch (error) {
+    console.error(
+      "[AUTH SERVICE] Sign-in error:",
+      error
+    );
+
+    throw error;
+  }
+}
+
+/* =========================================================
    REFRESH SESSION
 ========================================================= */
 
 async function refreshSession() {
   /*
-   * Prevent several simultaneous API requests from
-   * triggering several refresh requests.
+   * Prevent multiple simultaneous refresh requests.
    */
+
   if (!refreshPromise) {
     refreshPromise =
       (async () => {
@@ -188,10 +352,6 @@ async function refreshSession() {
 
 async function getSession() {
   try {
-    console.log(
-      "[AUTH SERVICE] Getting current Supabase session..."
-    );
-
     const {
       data,
       error,
@@ -225,19 +385,16 @@ async function getSession() {
       getTokenSecondsRemaining(token);
 
     console.log(
-      "[AUTH SERVICE] Actual JWT seconds remaining:",
+      "[AUTH SERVICE] JWT seconds remaining:",
       secondsRemaining
     );
 
     /*
-     * IMPORTANT:
+     * Refresh if:
      *
-     * Do NOT trust only session.expires_at.
-     *
-     * The previous bug was exactly this:
-     *
-     * session.expires_at looked valid,
-     * but access_token.exp was already expired.
+     * - token is missing
+     * - token is expired
+     * - token expires within 60 seconds
      */
 
     if (
@@ -245,7 +402,7 @@ async function getSession() {
       secondsRemaining <= 60
     ) {
       console.log(
-        "[AUTH SERVICE] JWT expired or near expiry. Forcing refresh..."
+        "[AUTH SERVICE] JWT expired or near expiry. Refreshing..."
       );
 
       try {
@@ -253,7 +410,7 @@ async function getSession() {
           await refreshSession();
       } catch (refreshError) {
         console.error(
-          "[AUTH SERVICE] Unable to refresh expired session:",
+          "[AUTH SERVICE] Unable to refresh session:",
           refreshError
         );
 
@@ -263,7 +420,7 @@ async function getSession() {
 
     if (!session?.access_token) {
       console.warn(
-        "[AUTH SERVICE] Valid session has no access token."
+        "[AUTH SERVICE] Session has no access token."
       );
 
       return null;
@@ -278,20 +435,11 @@ async function getSession() {
       finalSecondsRemaining <= 0
     ) {
       console.error(
-        "[AUTH SERVICE] Refreshed JWT is still expired."
+        "[AUTH SERVICE] Session token is expired."
       );
 
       return null;
     }
-
-    console.log(
-      "[AUTH SERVICE] Valid session available."
-    );
-
-    console.log(
-      "[AUTH SERVICE] Final JWT seconds remaining:",
-      finalSecondsRemaining
-    );
 
     return session;
   } catch (error) {
@@ -305,168 +453,17 @@ async function getSession() {
 }
 
 /* =========================================================
-   SIGN IN
+   GET ACCESS TOKEN
 ========================================================= */
 
-async function signIn(
-  emailOrCredentials,
-  passwordArgument
-) {
-  try {
-    /*
-     * Support BOTH:
-     *
-     * signIn(email, password)
-     *
-     * and
-     *
-     * signIn({ email, password })
-     *
-     * This prevents the undefined-email bug regardless
-     * of which existing Login.jsx calling convention
-     * is currently being used.
-     */
+async function getAccessToken() {
+  const session =
+    await getSession();
 
-    let email = "";
-    let password = "";
-
-    if (
-      emailOrCredentials &&
-      typeof emailOrCredentials ===
-        "object"
-    ) {
-      email =
-        normalizeEmail(
-          emailOrCredentials.email
-        );
-
-      password =
-        normalizePassword(
-          emailOrCredentials.password
-        );
-    } else {
-      email =
-        normalizeEmail(
-          emailOrCredentials
-        );
-
-      password =
-        normalizePassword(
-          passwordArgument
-        );
-    }
-
-    console.log(
-      "[AUTH SERVICE] Sign-in requested."
-    );
-
-    console.log(
-      "[AUTH SERVICE] Email:",
-      email || "MISSING"
-    );
-
-    console.log(
-      "[AUTH SERVICE] Password supplied:",
-      password ? "YES" : "NO"
-    );
-
-    /*
-     * NEVER allow undefined/null to reach
-     * signInWithPassword().
-     */
-
-    if (!email) {
-      throw new Error(
-        "Email is required."
-      );
-    }
-
-    if (!password) {
-      throw new Error(
-        "Password is required."
-      );
-    }
-
-    /*
-     * Supabase requires these exact fields.
-     */
-    const credentials = {
-      email,
-      password,
-    };
-
-    console.log(
-      "[AUTH SERVICE] Sending valid Supabase password credentials."
-    );
-
-    const {
-      data,
-      error,
-    } =
-      await supabase.auth.signInWithPassword(
-        credentials
-      );
-
-    if (error) {
-      console.error(
-        "[AUTH SERVICE] Supabase sign-in failed:",
-        error
-      );
-
-      throw error;
-    }
-
-    const session =
-      data?.session || null;
-
-    if (!session) {
-      throw new Error(
-        "Login succeeded but Supabase returned no session."
-      );
-    }
-
-    if (!session.access_token) {
-      throw new Error(
-        "Login succeeded but no access token was returned."
-      );
-    }
-
-    console.log(
-      "[AUTH SERVICE] Sign-in successful."
-    );
-
-    console.log(
-      "[AUTH SERVICE] User ID:",
-      session.user?.id
-    );
-
-    console.log(
-      "[AUTH SERVICE] Email:",
-      session.user?.email
-    );
-
-    console.log(
-      "[AUTH SERVICE] JWT seconds remaining:",
-      getTokenSecondsRemaining(
-        session.access_token
-      )
-    );
-
-    return {
-      session,
-      user:
-        data?.user ||
-        session.user ||
-        null,
-    };
-  } catch (error) {
-    console.error(
-      "[AUTH SERVICE] Sign-in error:",
-      error
-    );
-
-    throw error;
-  }
+  return (
+    session?.access_token ||
+    null
+  );
 }
 
 /* =========================================================
@@ -510,9 +507,7 @@ async function signOut() {
    AUTH STATE LISTENER
 ========================================================= */
 
-function onAuthStateChange(
-  callback
-) {
+function onAuthStateChange(callback) {
   const {
     data,
   } =
@@ -547,20 +542,6 @@ function onAuthStateChange(
 
   return (
     data?.subscription || null
-  );
-}
-
-/* =========================================================
-   GET ACCESS TOKEN
-========================================================= */
-
-async function getAccessToken() {
-  const session =
-    await getSession();
-
-  return (
-    session?.access_token ||
-    null
   );
 }
 

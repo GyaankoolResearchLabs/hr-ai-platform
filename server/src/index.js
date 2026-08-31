@@ -48,7 +48,8 @@ import shiftHolidayRouter from "./routes/shiftHoliday.js";
 import investigationsRouter from "./routes/investigations.js";
 import policiesRouter from "./routes/policies.js";
 import policyLibraryRouter from "./routes/policyLibrary.js";
-
+import complianceCalendarRouter from "./routes/complianceCalendar.js";
+import authRouter from "./routes/auth.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -225,6 +226,14 @@ app.get(
 /* =========================================================
    API ROUTES
 ========================================================= */
+/* ---------------------------------------------------------
+   AUTHENTICATION
+--------------------------------------------------------- */
+
+app.use(
+  "/api/auth",
+  authRouter,
+);
 
 /* ---------------------------------------------------------
    ORGANIZATIONS
@@ -567,6 +576,14 @@ app.use(
   policiesRouter,
 );
 
+/* ---------------------------------------------------------
+   COMPLIANCE CALENDAR & ALERTS
+--------------------------------------------------------- */
+
+app.use(
+  "/api/compliance-calendar",
+  complianceCalendarRouter,
+);
 /* =========================================================
    404 HANDLER
 ========================================================= */

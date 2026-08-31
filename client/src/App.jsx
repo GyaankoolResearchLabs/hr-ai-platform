@@ -82,6 +82,7 @@ import CompReviewCycleManager from "./pages/tools/CompReviewCycleManager";
 import ERCaseManagement from "./pages/tools/ERCaseManagement";
 import InvestigationTracker from "./pages/tools/InvestigationTracker";
 import PolicyLibraryTracker from "./pages/tools/PolicyLibraryTracker";
+import ComplianceCalendar from "./pages/tools/ComplianceCalendar";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -433,6 +434,10 @@ export default function App() {
   path="tools/policy-library-tracker"
   element={<PolicyLibraryTracker />}
 />
+<Route
+  path="tools/compliance-calendar"
+  element={<ComplianceCalendar />}
+ />
             {/* =================================================
                 WORKFORCE METRICS
             ================================================= */}
