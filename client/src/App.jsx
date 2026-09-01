@@ -83,12 +83,20 @@ import ERCaseManagement from "./pages/tools/ERCaseManagement";
 import InvestigationTracker from "./pages/tools/InvestigationTracker";
 import PolicyLibraryTracker from "./pages/tools/PolicyLibraryTracker";
 import ComplianceCalendar from "./pages/tools/ComplianceCalendar";
+
+/* =========================================================
+   HR TECHNOLOGY
+========================================================= */
+
+import IntegrationHub from "./pages/tools/IntegrationHub";
+
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
 
 import WorkforceMetrics from "./pages/tools/WorkforceMetrics";
 import AskYourData from "./pages/tools/AskYourData";
+
 /* =========================================================
    HR REQUEST TOOLS
 ========================================================= */
@@ -400,44 +408,56 @@ export default function App() {
               path="tools/headcount-planning"
               element={<HeadcountPlanning />}
             />
+
             <Route
-            path="tools/ask-your-data"
-            element={<AskYourData />}
+              path="tools/ask-your-data"
+              element={<AskYourData />}
             />
+
             <Route
-  path="tools/pay-band-structure-builder"
-  element={
-    <PayBandStructureBuilder />
-  }
-/>   
-   <Route
-  path="tools/market-benchmarking"
-  element={<MarketBenchmarking />}
-  />
+              path="tools/pay-band-structure-builder"
+              element={<PayBandStructureBuilder />}
+            />
 
-  <Route
-  path="tools/comp-review-cycle-manager"
-  element={<CompReviewCycleManager />}
-/>
+            <Route
+              path="tools/market-benchmarking"
+              element={<MarketBenchmarking />}
+            />
 
-<Route
-  path="tools/er-case-management"
-  element={<ERCaseManagement />}
-/>
+            <Route
+              path="tools/comp-review-cycle-manager"
+              element={<CompReviewCycleManager />}
+            />
 
-<Route
-  path="tools/investigation-tracker"
-  element={<InvestigationTracker />}
-/>
+            <Route
+              path="tools/er-case-management"
+              element={<ERCaseManagement />}
+            />
 
-<Route
-  path="tools/policy-library-tracker"
-  element={<PolicyLibraryTracker />}
-/>
-<Route
-  path="tools/compliance-calendar"
-  element={<ComplianceCalendar />}
- />
+            <Route
+              path="tools/investigation-tracker"
+              element={<InvestigationTracker />}
+            />
+
+            <Route
+              path="tools/policy-library-tracker"
+              element={<PolicyLibraryTracker />}
+            />
+
+            <Route
+              path="tools/compliance-calendar"
+              element={<ComplianceCalendar />}
+            />
+
+            {/* =================================================
+                HR TECHNOLOGY — INTEGRATION HUB
+            ================================================= */}
+
+            <Route
+              path="tools/integration-hub"
+              element={<IntegrationHub />}
+            />
+
             {/* =================================================
                 WORKFORCE METRICS
             ================================================= */}

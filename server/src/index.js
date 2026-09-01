@@ -50,6 +50,10 @@ import policiesRouter from "./routes/policies.js";
 import policyLibraryRouter from "./routes/policyLibrary.js";
 import complianceCalendarRouter from "./routes/complianceCalendar.js";
 import authRouter from "./routes/auth.js";
+import integrationHubRouter from "./routes/integrationHub.js";
+import integrationsRouter from "./routes/integrations.js";
+import testHrApiRoutes from "./routes/testHrApi.js";
+import integrationSyncRouter from "./routes/integrationSync.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -275,7 +279,17 @@ app.use(
   "/api/ai/job-description",
   jobDescriptionRouter,
 );
+app.use(
+  "/api/integration-hub",
+  integrationHubRouter,
+);
+app.use("/api/integrations", integrationsRouter);
 
+app.use("/api/test-hr", testHrApiRoutes);
+app.use(
+  "/api/integrations",
+  integrationSyncRouter
+);
 /* ---------------------------------------------------------
    GENERAL DOCUMENTS
 --------------------------------------------------------- */

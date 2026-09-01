@@ -6,7 +6,7 @@ import StatusBadge from "./StatusBadge";
  * Renders a single Problem → Tool pairing.
  *
  * Every tool is defined in config/categories.js.
- * Implemented tools can provide a route through tool.route.
+ * Available tools must provide a route through tool.route.
  * Tools without a route remain on the roadmap.
  */
 export default function ToolCard({
@@ -17,16 +17,29 @@ export default function ToolCard({
   const navigate = useNavigate();
 
   const isAvailable =
-    tool?.status === "available" && tool?.route;
+    tool?.status === "available" && Boolean(tool?.route);
 
   const handleOpenTool = () => {
     if (!isAvailable) return;
 
-    navigate(tool.route);
+    /*
+     * Tool routes inside categories.js should normally be:
+     * /app/tools/tool-name
+     *
+     * If an old config value is relative, normalize it here.
+     */
+    let route = String(tool.route).trim();
+
+    if (!route.startsWith("/")) {
+      route = `/app/${route}`;
+    }
+
+    navigate(route);
   };
 
   return (
     <div className="card flex flex-col gap-4 p-5">
+      {/* HEADER */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink-50 text-ink-600">
@@ -41,19 +54,21 @@ export default function ToolCard({
           </span>
         </div>
 
-        <StatusBadge status={tool.status} />
+        <StatusBadge status={tool?.status} />
       </div>
 
+      {/* TOOL INFO */}
       <div>
         <h4 className="text-sm font-semibold text-ink-900">
-          {tool.name}
+          {tool?.name}
         </h4>
 
         <p className="mt-0.5 text-sm text-brand-700">
-          {tool.tagline}
+          {tool?.tagline}
         </p>
       </div>
 
+      {/* HR PROBLEM */}
       <div className="rounded-lg bg-canvas px-3 py-2.5">
         <p className="text-xs font-medium text-ink-400">
           HR problem
@@ -64,6 +79,7 @@ export default function ToolCard({
         </p>
       </div>
 
+      {/* ACTION */}
       {isAvailable ? (
         <button
           type="button"
