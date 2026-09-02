@@ -83,7 +83,7 @@ import ERCaseManagement from "./pages/tools/ERCaseManagement";
 import InvestigationTracker from "./pages/tools/InvestigationTracker";
 import PolicyLibraryTracker from "./pages/tools/PolicyLibraryTracker";
 import ComplianceCalendar from "./pages/tools/ComplianceCalendar";
-
+import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
 /* =========================================================
    HR TECHNOLOGY
 ========================================================= */
@@ -448,7 +448,10 @@ export default function App() {
               path="tools/compliance-calendar"
               element={<ComplianceCalendar />}
             />
-
+            <Route
+  path="tools/access-audit-log"
+  element={<AccessAuditLogViewer />}
+/>
             {/* =================================================
                 HR TECHNOLOGY — INTEGRATION HUB
             ================================================= */}
