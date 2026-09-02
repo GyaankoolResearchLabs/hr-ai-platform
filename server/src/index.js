@@ -55,6 +55,7 @@ import integrationHubRouter from "./routes/integrationHub.js";
 import integrationsRouter from "./routes/integrations.js";
 import testHrApiRoutes from "./routes/testHrApi.js";
 import integrationSyncRouter from "./routes/integrationSync.js";
+import strategicHrRoadmapRouter from "./routes/strategicHrRoadmap.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -461,7 +462,14 @@ app.use(
   "/api/attrition-forecasting",
   attritionForecastingRouter,
 );
+/* ---------------------------------------------------------
+   STRATEGIC HR ROADMAP
+--------------------------------------------------------- */
 
+app.use(
+  "/api/strategic-hr-roadmap",
+  strategicHrRoadmapRouter,
+);
 /* ---------------------------------------------------------
    ORGANIZATION CHART
 --------------------------------------------------------- */

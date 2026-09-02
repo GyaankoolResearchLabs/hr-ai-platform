@@ -89,7 +89,7 @@ import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
 ========================================================= */
 
 import IntegrationHub from "./pages/tools/IntegrationHub";
-
+import StrategicHRRoadmap from "./pages/tools/StrategicHRRoadmap";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -408,7 +408,10 @@ export default function App() {
               path="tools/headcount-planning"
               element={<HeadcountPlanning />}
             />
-
+            <Route
+  path="tools/strategic-hr-roadmap"
+  element={<StrategicHRRoadmap />}
+/>
             <Route
               path="tools/ask-your-data"
               element={<AskYourData />}
