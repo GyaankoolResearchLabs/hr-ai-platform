@@ -12,6 +12,7 @@ import employeeDocumentsRouter from "./routes/employeeDocuments.js";
 import organizationsRouter from "./routes/organizations.js";
 import employeesRouter from "./routes/employees.js";
 import auditLogsRouter from "./routes/auditLogs.js";
+import successionPlanningRouter from "./routes/successionPlanning.js";
 import subscriptionRouter from "./routes/subscription.js";
 import aiRouter from "./routes/ai.js";
 import documentsRouter from "./routes/documents.js";
@@ -265,6 +266,10 @@ app.use(
 app.use(
   "/api/audit-logs",
   auditLogsRouter,
+);
+app.use(
+  "/api/succession-planning",
+  successionPlanningRouter,
 );
 /* ---------------------------------------------------------
    SUBSCRIPTION
