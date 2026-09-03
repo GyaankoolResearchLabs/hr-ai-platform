@@ -57,6 +57,7 @@ import integrationsRouter from "./routes/integrations.js";
 import testHrApiRoutes from "./routes/testHrApi.js";
 import integrationSyncRouter from "./routes/integrationSync.js";
 import strategicHrRoadmapRouter from "./routes/strategicHrRoadmap.js";
+import payrollRunsRouter from "./routes/payrollRuns.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -298,7 +299,7 @@ app.use(
   integrationHubRouter,
 );
 app.use("/api/integrations", integrationsRouter);
-
+app.use("/api/payroll-runs", payrollRunsRouter);
 app.use("/api/test-hr", testHrApiRoutes);
 app.use(
   "/api/integrations",

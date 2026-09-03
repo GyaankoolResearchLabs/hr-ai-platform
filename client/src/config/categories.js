@@ -1183,7 +1183,8 @@ route: "/app/tools/approval-routing",
               name: "Payroll Run Engine",
               tagline:
                 "Automated payroll calculation and disbursement runs",
-              status: "planned",
+              status: "available",
+              route: "/app/tools/payroll-run-engine",
             },
           },
 

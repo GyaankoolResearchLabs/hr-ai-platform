@@ -84,6 +84,7 @@ import InvestigationTracker from "./pages/tools/InvestigationTracker";
 import PolicyLibraryTracker from "./pages/tools/PolicyLibraryTracker";
 import ComplianceCalendar from "./pages/tools/ComplianceCalendar";
 import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
+
 /* =========================================================
    HR TECHNOLOGY
 ========================================================= */
@@ -91,6 +92,8 @@ import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
 import IntegrationHub from "./pages/tools/IntegrationHub";
 import StrategicHRRoadmap from "./pages/tools/StrategicHRRoadmap";
 import SuccessionPlanning from "./pages/tools/SuccessionPlanning";
+import PayrollRunEngine from "./pages/tools/PayrollRunEngine.jsx";
+
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -409,10 +412,12 @@ export default function App() {
               path="tools/headcount-planning"
               element={<HeadcountPlanning />}
             />
+
             <Route
-            path="tools/strategic-hr-roadmap"
-            element={<StrategicHRRoadmap />}
+              path="tools/strategic-hr-roadmap"
+              element={<StrategicHRRoadmap />}
             />
+
             <Route
               path="tools/ask-your-data"
               element={<AskYourData />}
@@ -452,14 +457,26 @@ export default function App() {
               path="tools/compliance-calendar"
               element={<ComplianceCalendar />}
             />
+
             <Route
-            path="tools/access-audit-log"
-            element={<AccessAuditLogViewer />}
+              path="tools/access-audit-log"
+              element={<AccessAuditLogViewer />}
             />
+
             <Route
-            path="tools/succession-planning-tool"
-            element={<SuccessionPlanning />}
+              path="tools/succession-planning-tool"
+              element={<SuccessionPlanning />}
             />
+
+            {/* =================================================
+                PAYROLL RUN ENGINE
+            ================================================= */}
+
+            <Route
+              path="tools/payroll-run-engine"
+              element={<PayrollRunEngine />}
+            />
+
             {/* =================================================
                 HR TECHNOLOGY — INTEGRATION HUB
             ================================================= */}
