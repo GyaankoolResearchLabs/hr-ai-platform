@@ -1198,7 +1198,8 @@ route: "/app/tools/approval-routing",
               name: "Statutory Deduction Engine",
               tagline:
                 "Automated statutory deduction calculation and filing prep",
-              status: "planned",
+              status: "available",
+              route: "/app/tools/statutory-deduction-engine",
             },
           },
 

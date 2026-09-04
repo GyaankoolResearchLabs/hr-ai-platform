@@ -58,6 +58,8 @@ import testHrApiRoutes from "./routes/testHrApi.js";
 import integrationSyncRouter from "./routes/integrationSync.js";
 import strategicHrRoadmapRouter from "./routes/strategicHrRoadmap.js";
 import payrollRunsRouter from "./routes/payrollRuns.js";
+import statutoryDeductionsRouter from "./routes/statutoryDeductions.js";
+
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -234,6 +236,7 @@ app.get(
 /* =========================================================
    API ROUTES
 ========================================================= */
+
 /* ---------------------------------------------------------
    AUTHENTICATION
 --------------------------------------------------------- */
@@ -260,6 +263,7 @@ app.use(
   "/api/employees",
   employeesRouter,
 );
+
 /* ---------------------------------------------------------
    ACCESS & AUDIT LOGS
 --------------------------------------------------------- */
@@ -268,10 +272,12 @@ app.use(
   "/api/audit-logs",
   auditLogsRouter,
 );
+
 app.use(
   "/api/succession-planning",
   successionPlanningRouter,
 );
+
 /* ---------------------------------------------------------
    SUBSCRIPTION
 --------------------------------------------------------- */
@@ -294,17 +300,37 @@ app.use(
   "/api/ai/job-description",
   jobDescriptionRouter,
 );
+
 app.use(
   "/api/integration-hub",
   integrationHubRouter,
 );
-app.use("/api/integrations", integrationsRouter);
-app.use("/api/payroll-runs", payrollRunsRouter);
-app.use("/api/test-hr", testHrApiRoutes);
+
 app.use(
   "/api/integrations",
-  integrationSyncRouter
+  integrationsRouter,
 );
+
+app.use(
+  "/api/payroll-runs",
+  payrollRunsRouter,
+);
+
+app.use(
+  "/api/statutory-deductions",
+  statutoryDeductionsRouter,
+);
+
+app.use(
+  "/api/test-hr",
+  testHrApiRoutes,
+);
+
+app.use(
+  "/api/integrations",
+  integrationSyncRouter,
+);
+
 /* ---------------------------------------------------------
    GENERAL DOCUMENTS
 --------------------------------------------------------- */
@@ -468,6 +494,7 @@ app.use(
   "/api/attrition-forecasting",
   attritionForecastingRouter,
 );
+
 /* ---------------------------------------------------------
    STRATEGIC HR ROADMAP
 --------------------------------------------------------- */
@@ -476,6 +503,7 @@ app.use(
   "/api/strategic-hr-roadmap",
   strategicHrRoadmapRouter,
 );
+
 /* ---------------------------------------------------------
    ORGANIZATION CHART
 --------------------------------------------------------- */
@@ -620,6 +648,7 @@ app.use(
   "/api/compliance-calendar",
   complianceCalendarRouter,
 );
+
 /* =========================================================
    404 HANDLER
 ========================================================= */

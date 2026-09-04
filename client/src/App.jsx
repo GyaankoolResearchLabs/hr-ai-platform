@@ -93,7 +93,7 @@ import IntegrationHub from "./pages/tools/IntegrationHub";
 import StrategicHRRoadmap from "./pages/tools/StrategicHRRoadmap";
 import SuccessionPlanning from "./pages/tools/SuccessionPlanning";
 import PayrollRunEngine from "./pages/tools/PayrollRunEngine.jsx";
-
+import StatutoryDeductionEngine from "./pages/tools/StatutoryDeductionEngine.jsx";
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -476,7 +476,10 @@ export default function App() {
               path="tools/payroll-run-engine"
               element={<PayrollRunEngine />}
             />
-
+            <Route
+            path="/app/tools/statutory-deduction-engine"
+            element={<StatutoryDeductionEngine />}
+            />
             {/* =================================================
                 HR TECHNOLOGY — INTEGRATION HUB
             ================================================= */}
