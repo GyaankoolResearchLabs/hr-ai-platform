@@ -60,6 +60,7 @@ import strategicHrRoadmapRouter from "./routes/strategicHrRoadmap.js";
 import payrollRunsRouter from "./routes/payrollRuns.js";
 import statutoryDeductionsRouter from "./routes/statutoryDeductions.js";
 import payslipsRouter from "./routes/payslips.js";
+import expenseClaimsRouter from "./routes/expenseClaims.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -315,7 +316,10 @@ app.use(
   "/api/payroll-runs",
   payrollRunsRouter,
 );
-
+app.use(
+  "/api/expense-claims",
+  expenseClaimsRouter,
+);
 app.use(
   "/api/statutory-deductions",
   statutoryDeductionsRouter,

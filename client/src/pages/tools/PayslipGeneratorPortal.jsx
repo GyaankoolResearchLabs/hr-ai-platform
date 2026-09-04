@@ -272,6 +272,15 @@ export default function PayslipGeneratorPortal() {
   const [showGenerateModal, setShowGenerateModal] =
     useState(false);
 
+  const [payrollRuns, setPayrollRuns] =
+    useState([]);
+
+  const [selectedPayrollRun, setSelectedPayrollRun] =
+    useState(null);
+
+  const [runsLoading, setRunsLoading] =
+    useState(false);
+
   const [payrollRunId, setPayrollRunId] =
     useState("");
 
@@ -316,6 +325,50 @@ export default function PayslipGeneratorPortal() {
   useEffect(() => {
     loadPayslips();
   }, [loadPayslips]);
+
+  /* =======================================================
+     LOAD PAYROLL RUNS
+  ======================================================= */
+
+  const loadPayrollRuns = useCallback(async () => {
+    try {
+      setRunsLoading(true);
+
+      const response = await api.get(
+        "/payroll-runs",
+      );
+
+      const data = normalizeResponse(response);
+
+      let runs = [];
+
+      if (Array.isArray(data)) {
+        runs = data;
+      } else if (Array.isArray(data?.runs)) {
+        runs = data.runs;
+      } else if (Array.isArray(data?.data)) {
+        runs = data.data;
+      }
+
+      setPayrollRuns(runs);
+    } catch (error) {
+      console.error(
+        "Load payroll runs error:",
+        error,
+      );
+
+      toast.error(
+        error?.response?.data?.message ||
+          "Could not load payroll runs.",
+      );
+    } finally {
+      setRunsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPayrollRuns();
+  }, [loadPayrollRuns]);
 
   /* =======================================================
      LOAD SINGLE PAYSLIP
@@ -500,9 +553,9 @@ export default function PayslipGeneratorPortal() {
   ) {
     event.preventDefault();
 
-    if (!payrollRunId.trim()) {
+    if (!selectedPayrollRun?.id) {
       toast.error(
-        "Enter a payroll run ID.",
+        "Select a payroll run first.",
       );
 
       return;
@@ -512,7 +565,7 @@ export default function PayslipGeneratorPortal() {
       setGenerateLoading(true);
 
       const response = await api.post(
-        `/payslips/payroll-runs/${payrollRunId.trim()}/generate`,
+        `/payslips/payroll-runs/${selectedPayrollRun.id}/generate`,
       );
 
       const data =
@@ -533,9 +586,11 @@ export default function PayslipGeneratorPortal() {
       );
 
       setShowGenerateModal(false);
+      setSelectedPayrollRun(null);
       setPayrollRunId("");
 
       await loadPayslips();
+      await loadPayrollRuns();
     } catch (error) {
       console.error(
         "Generate payslips error:",
@@ -765,10 +820,10 @@ export default function PayslipGeneratorPortal() {
      PAYROLL RUN STATUS
   ======================================================= */
 
-  async function loadRunStatus() {
-    if (!payrollRunId.trim()) {
+  async function loadRunStatus(runId = selectedPayrollRun?.id) {
+    if (!runId) {
       toast.error(
-        "Enter a payroll run ID first.",
+        "Select a payroll run first.",
       );
 
       return;
@@ -780,7 +835,7 @@ export default function PayslipGeneratorPortal() {
       );
 
       const response = await api.get(
-        `/payslips/payroll-runs/${payrollRunId.trim()}/status`,
+        `/payslips/payroll-runs/${runId}/status`,
       );
 
       const data =
@@ -849,6 +904,20 @@ export default function PayslipGeneratorPortal() {
   ]);
 
   /* =======================================================
+     SELECT PAYROLL RUN
+  ======================================================= */
+
+  function handleSelectPayrollRun(run) {
+    if (!run?.id) {
+      return;
+    }
+
+    setSelectedPayrollRun(run);
+    setPayrollRunId(run.id);
+    setRunStatus(null);
+  }
+
+  /* =======================================================
      REFRESH
   ======================================================= */
 
@@ -864,6 +933,18 @@ export default function PayslipGeneratorPortal() {
     toast.success(
       "Payslip data refreshed.",
     );
+  }
+
+  /* =======================================================
+     OPEN GENERATE MODAL
+  ======================================================= */
+
+  async function handleOpenGenerateModal() {
+    setShowGenerateModal(true);
+    setSelectedPayrollRun(null);
+    setPayrollRunId("");
+
+    await loadPayrollRuns();
   }
 
   /* =======================================================
@@ -901,7 +982,7 @@ export default function PayslipGeneratorPortal() {
 
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/app/dashboard")}
           className="mb-4 inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-500 transition hover:bg-ink-100 hover:text-ink-900"
         >
           <ArrowLeft size={16} />
@@ -960,11 +1041,7 @@ export default function PayslipGeneratorPortal() {
 
             <button
               type="button"
-              onClick={() =>
-                setShowGenerateModal(
-                  true,
-                )
-              }
+              onClick={handleOpenGenerateModal}
               className="inline-flex items-center gap-2 rounded-xl bg-ink-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-ink-800"
             >
               <FileText
@@ -1108,11 +1185,7 @@ export default function PayslipGeneratorPortal() {
             ) : paginatedPayslips.length ===
               0 ? (
               <EmptyState
-                onGenerate={() =>
-                  setShowGenerateModal(
-                    true,
-                  )
-                }
+                onGenerate={handleOpenGenerateModal}
               />
             ) : (
               <>
@@ -1413,51 +1486,81 @@ export default function PayslipGeneratorPortal() {
               </div>
 
               <p className="text-sm text-ink-500">
-                Check how many payslips have been
-                generated for a specific payroll
-                run.
+                Select a payroll run to check its
+                payslip generation status.
               </p>
             </div>
 
             <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl">
-              <input
-                value={payrollRunId}
-                onChange={(event) =>
-                  setPayrollRunId(
-                    event.target.value,
-                  )
-                }
-                placeholder="Enter payroll run ID"
-                className="min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-900 outline-none focus:border-ink-400"
-              />
+              <select
+                value={selectedPayrollRun?.id || ""}
+                onChange={(event) => {
+                  const run = payrollRuns.find(
+                    (item) => item.id === event.target.value,
+                  );
+
+                  handleSelectPayrollRun(run || null);
+                }}
+                disabled={runsLoading || payrollRuns.length === 0}
+                className="min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-900 outline-none focus:border-ink-400 disabled:cursor-not-allowed disabled:bg-ink-50"
+              >
+                <option value="">
+                  {runsLoading
+                    ? "Loading payroll runs..."
+                    : payrollRuns.length === 0
+                      ? "No payroll runs available"
+                      : "Select payroll run"}
+                </option>
+
+                {payrollRuns.map((run) => (
+                  <option key={run.id} value={run.id}>
+                    {formatMonth(run.payroll_month)} · {Number(run.employee_count) || 0} employees · {String(run.status || "Draft")}
+                  </option>
+                ))}
+              </select>
 
               <button
                 type="button"
-                onClick={
-                  loadRunStatus
-                }
+                onClick={() => loadRunStatus()}
                 disabled={
-                  actionLoading ===
-                  "run-status"
+                  !selectedPayrollRun?.id ||
+                  actionLoading === "run-status"
                 }
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-800 disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-ink-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {actionLoading ===
-                "run-status" ? (
+                {actionLoading === "run-status" ? (
                   <Loader2
                     size={16}
                     className="animate-spin"
                   />
                 ) : (
-                  <Search
-                    size={16}
-                  />
+                  <Search size={16} />
                 )}
 
                 Check Status
               </button>
             </div>
           </div>
+
+          {selectedPayrollRun && (
+            <div className="mt-4 rounded-xl border border-ink-100 bg-ink-25 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-ink-900">
+                    {formatMonth(selectedPayrollRun.payroll_month)}
+                  </p>
+                  <p className="mt-1 text-xs text-ink-500">
+                    {Number(selectedPayrollRun.employee_count) || 0} employees · {formatCurrency(selectedPayrollRun.gross_pay)} gross · {formatCurrency(selectedPayrollRun.net_pay)} net
+                  </p>
+                </div>
+
+                <StatusMetric
+                  label="Run Status"
+                  value={selectedPayrollRun.status || "Draft"}
+                />
+              </div>
+            </div>
+          )}
 
           {runStatus && (
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1540,20 +1643,76 @@ export default function PayslipGeneratorPortal() {
               className="p-5"
             >
               <label className="mb-2 block text-sm font-semibold text-ink-800">
-                Payroll Run ID
+                Select Payroll Run
               </label>
 
-              <input
+              <select
                 autoFocus
-                value={payrollRunId}
-                onChange={(event) =>
-                  setPayrollRunId(
-                    event.target.value,
-                  )
-                }
-                placeholder="Paste payroll run UUID"
-                className="w-full rounded-xl border border-ink-200 bg-white px-3 py-3 text-sm text-ink-900 outline-none transition placeholder:text-ink-400 focus:border-ink-400"
-              />
+                value={selectedPayrollRun?.id || ""}
+                onChange={(event) => {
+                  const run = payrollRuns.find(
+                    (item) => item.id === event.target.value,
+                  );
+
+                  handleSelectPayrollRun(run || null);
+                }}
+                disabled={runsLoading || payrollRuns.length === 0}
+                className="w-full rounded-xl border border-ink-200 bg-white px-3 py-3 text-sm text-ink-900 outline-none transition focus:border-ink-400 disabled:cursor-not-allowed disabled:bg-ink-50"
+              >
+                <option value="">
+                  {runsLoading
+                    ? "Loading payroll runs..."
+                    : payrollRuns.length === 0
+                      ? "No payroll runs available"
+                      : "Choose a payroll month"}
+                </option>
+
+                {payrollRuns.map((run) => (
+                  <option key={run.id} value={run.id}>
+                    {formatMonth(run.payroll_month)} · {Number(run.employee_count) || 0} employees · {String(run.status || "Draft")}
+                  </option>
+                ))}
+              </select>
+
+              {selectedPayrollRun && (
+                <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl border border-ink-100 bg-ink-25 p-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+                      Employees
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-ink-800">
+                      {Number(selectedPayrollRun.employee_count) || 0}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+                      Status
+                    </p>
+                    <p className="mt-1 text-sm font-semibold capitalize text-ink-800">
+                      {selectedPayrollRun.status || "Draft"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+                      Gross Pay
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-ink-800">
+                      {formatCurrency(selectedPayrollRun.gross_pay)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+                      Net Pay
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-ink-800">
+                      {formatCurrency(selectedPayrollRun.net_pay)}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
                 <div className="flex gap-3">
@@ -1585,6 +1744,7 @@ export default function PayslipGeneratorPortal() {
                     setShowGenerateModal(
                       false,
                     );
+                    setSelectedPayrollRun(null);
                     setPayrollRunId("");
                   }}
                   className="rounded-xl border border-ink-200 px-4 py-2.5 text-sm font-semibold text-ink-700 transition hover:bg-ink-50"

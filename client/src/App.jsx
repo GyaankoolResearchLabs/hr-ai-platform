@@ -84,7 +84,10 @@ import InvestigationTracker from "./pages/tools/InvestigationTracker";
 import PolicyLibraryTracker from "./pages/tools/PolicyLibraryTracker";
 import ComplianceCalendar from "./pages/tools/ComplianceCalendar";
 import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
+
 import PayslipGeneratorPortal from "./pages/tools/PayslipGeneratorPortal.jsx";
+import ReimbursementExpenseManager from "./pages/tools/ReimbursementExpenseManager.jsx";
+
 /* =========================================================
    HR TECHNOLOGY
 ========================================================= */
@@ -94,6 +97,7 @@ import StrategicHRRoadmap from "./pages/tools/StrategicHRRoadmap";
 import SuccessionPlanning from "./pages/tools/SuccessionPlanning";
 import PayrollRunEngine from "./pages/tools/PayrollRunEngine.jsx";
 import StatutoryDeductionEngine from "./pages/tools/StatutoryDeductionEngine.jsx";
+
 /* =========================================================
    HR ANALYTICS
 ========================================================= */
@@ -476,14 +480,26 @@ export default function App() {
               path="tools/payroll-run-engine"
               element={<PayrollRunEngine />}
             />
+
             <Route
-            path="/app/tools/statutory-deduction-engine"
-            element={<StatutoryDeductionEngine />}
+              path="/app/tools/statutory-deduction-engine"
+              element={<StatutoryDeductionEngine />}
             />
+
             <Route
-            path="/app/tools/payslip-generator-portal"
-            element={<PayslipGeneratorPortal />}
+              path="/app/tools/payslip-generator-portal"
+              element={<PayslipGeneratorPortal />}
             />
+
+            {/* =================================================
+                REIMBURSEMENT & EXPENSE MANAGER
+            ================================================= */}
+
+            <Route
+              path="/app/tools/reimbursement-expense-manager"
+              element={<ReimbursementExpenseManager />}
+            />
+
             {/* =================================================
                 HR TECHNOLOGY — INTEGRATION HUB
             ================================================= */}

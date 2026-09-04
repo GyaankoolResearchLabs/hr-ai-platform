@@ -1228,7 +1228,8 @@ route: "/app/tools/approval-routing",
               name: "Reimbursement & Expense Manager",
               tagline:
                 "Claims submission, approval, and payroll reconciliation",
-              status: "planned",
+              status: "available",
+              route: "/app/tools/reimbursement-expense-manager",
             },
           },
 
