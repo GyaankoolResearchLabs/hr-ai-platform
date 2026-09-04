@@ -88,6 +88,7 @@ import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
 import PayslipGeneratorPortal from "./pages/tools/PayslipGeneratorPortal.jsx";
 import ReimbursementExpenseManager from "./pages/tools/ReimbursementExpenseManager.jsx";
 import PayrollCostAnalytics from "./pages/tools/PayrollCostAnalytics.jsx";
+import FullFinalSettlementCalculator from "./pages/tools/FullFinalSettlementCalculator.jsx";
 /* =========================================================
    HR TECHNOLOGY
 ========================================================= */
@@ -493,6 +494,10 @@ export default function App() {
             <Route
             path="tools/payroll-cost-analytics"
             element={<PayrollCostAnalytics />}
+            />
+            <Route
+            path="/app/tools/full-final-settlement-calculator"
+            element={<FullFinalSettlementCalculator />}
             />
             {/* =================================================
                 REIMBURSEMENT & EXPENSE MANAGER
