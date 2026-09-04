@@ -1213,7 +1213,8 @@ route: "/app/tools/approval-routing",
               name: "Payslip Generator & Portal",
               tagline:
                 "Auto-generated payslips with employee self-serve access",
-              status: "planned",
+              status: "available",
+              route: "/app/tools/payslip-generator-portal",
             },
           },
 

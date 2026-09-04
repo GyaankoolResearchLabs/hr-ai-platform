@@ -59,7 +59,7 @@ import integrationSyncRouter from "./routes/integrationSync.js";
 import strategicHrRoadmapRouter from "./routes/strategicHrRoadmap.js";
 import payrollRunsRouter from "./routes/payrollRuns.js";
 import statutoryDeductionsRouter from "./routes/statutoryDeductions.js";
-
+import payslipsRouter from "./routes/payslips.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -593,7 +593,10 @@ app.use(
   "/api/shift-holiday",
   shiftHolidayRouter,
 );
-
+app.use(
+  "/api/payslips",
+  payslipsRouter,
+);
 /* ---------------------------------------------------------
    PAY BANDS
 --------------------------------------------------------- */

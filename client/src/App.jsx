@@ -84,7 +84,7 @@ import InvestigationTracker from "./pages/tools/InvestigationTracker";
 import PolicyLibraryTracker from "./pages/tools/PolicyLibraryTracker";
 import ComplianceCalendar from "./pages/tools/ComplianceCalendar";
 import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
-
+import PayslipGeneratorPortal from "./pages/tools/PayslipGeneratorPortal.jsx";
 /* =========================================================
    HR TECHNOLOGY
 ========================================================= */
@@ -479,6 +479,10 @@ export default function App() {
             <Route
             path="/app/tools/statutory-deduction-engine"
             element={<StatutoryDeductionEngine />}
+            />
+            <Route
+            path="/app/tools/payslip-generator-portal"
+            element={<PayslipGeneratorPortal />}
             />
             {/* =================================================
                 HR TECHNOLOGY — INTEGRATION HUB
