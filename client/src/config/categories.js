@@ -1243,7 +1243,8 @@ route: "/app/tools/approval-routing",
               name: "Payroll Cost Analytics",
               tagline:
                 "Payroll cost breakdowns by team, location, and role",
-              status: "planned",
+              status: "available",
+              route: "/app/tools/payroll-cost-analytics",
             },
           },
 

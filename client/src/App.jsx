@@ -87,7 +87,7 @@ import AccessAuditLogViewer from "./pages/tools/AccessAuditLogViewer";
 
 import PayslipGeneratorPortal from "./pages/tools/PayslipGeneratorPortal.jsx";
 import ReimbursementExpenseManager from "./pages/tools/ReimbursementExpenseManager.jsx";
-
+import PayrollCostAnalytics from "./pages/tools/PayrollCostAnalytics.jsx";
 /* =========================================================
    HR TECHNOLOGY
 ========================================================= */
@@ -490,7 +490,10 @@ export default function App() {
               path="/app/tools/payslip-generator-portal"
               element={<PayslipGeneratorPortal />}
             />
-
+            <Route
+            path="tools/payroll-cost-analytics"
+            element={<PayrollCostAnalytics />}
+            />
             {/* =================================================
                 REIMBURSEMENT & EXPENSE MANAGER
             ================================================= */}
@@ -499,7 +502,7 @@ export default function App() {
               path="/app/tools/reimbursement-expense-manager"
               element={<ReimbursementExpenseManager />}
             />
-
+             
             {/* =================================================
                 HR TECHNOLOGY — INTEGRATION HUB
             ================================================= */}

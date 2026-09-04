@@ -61,6 +61,7 @@ import payrollRunsRouter from "./routes/payrollRuns.js";
 import statutoryDeductionsRouter from "./routes/statutoryDeductions.js";
 import payslipsRouter from "./routes/payslips.js";
 import expenseClaimsRouter from "./routes/expenseClaims.js";
+import payrollCostAnalyticsRouter from "./routes/payrollCostAnalytics.js";
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -319,6 +320,10 @@ app.use(
 app.use(
   "/api/expense-claims",
   expenseClaimsRouter,
+);
+app.use(
+  "/api/payroll-cost-analytics",
+  payrollCostAnalyticsRouter,
 );
 app.use(
   "/api/statutory-deductions",

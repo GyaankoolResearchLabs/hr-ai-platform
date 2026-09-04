@@ -27,6 +27,7 @@ const emptyForm = {
   full_name: "",
   email: "",
   department: "",
+  location: "",
   title: "",
   employee_code: "",
   joining_date: "",
@@ -94,7 +95,11 @@ function parseCSVLine(line) {
     const character = line[i];
     const nextCharacter = line[i + 1];
 
-    if (character === '"' && insideQuotes && nextCharacter === '"') {
+    if (
+      character === '"' &&
+      insideQuotes &&
+      nextCharacter === '"'
+    ) {
       current += '"';
       i += 1;
       continue;
@@ -105,7 +110,10 @@ function parseCSVLine(line) {
       continue;
     }
 
-    if (character === "," && !insideQuotes) {
+    if (
+      character === "," &&
+      !insideQuotes
+    ) {
       values.push(current.trim());
       current = "";
       continue;
@@ -131,19 +139,30 @@ function parseCSV(text) {
     );
   }
 
-  const headers = parseCSVLine(lines[0]).map((header) =>
-    header.trim().toLowerCase().replace(/\s+/g, "_")
+  const headers = parseCSVLine(lines[0]).map(
+    (header) =>
+      header
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_")
   );
 
-  const requiredHeaders = ["full_name", "email"];
+  const requiredHeaders = [
+    "full_name",
+    "email",
+  ];
 
-  const missingHeaders = requiredHeaders.filter(
-    (header) => !headers.includes(header)
-  );
+  const missingHeaders =
+    requiredHeaders.filter(
+      (header) =>
+        !headers.includes(header)
+    );
 
   if (missingHeaders.length > 0) {
     throw new Error(
-      `Missing required columns: ${missingHeaders.join(", ")}`
+      `Missing required columns: ${missingHeaders.join(
+        ", "
+      )}`
     );
   }
 
@@ -152,105 +171,172 @@ function parseCSV(text) {
   const emailSet = new Set();
   const employeeCodeSet = new Set();
 
-  lines.slice(1).forEach((line, index) => {
-    const rowNumber = index + 2;
-    const values = parseCSVLine(line);
+  lines.slice(1).forEach(
+    (line, index) => {
+      const rowNumber = index + 2;
+      const values = parseCSVLine(line);
 
-    const employee = {
-      full_name: "",
-      email: "",
-      department: "",
-      title: "",
-      employee_code: "",
-      joining_date: "",
-      employment_status: "Active",
-      last_working_date: "",
-      address: "",
-    };
+      const employee = {
+        full_name: "",
+        email: "",
+        department: "",
+        location: "",
+        title: "",
+        employee_code: "",
+        joining_date: "",
+        employment_status: "Active",
+        last_working_date: "",
+        address: "",
+      };
 
-    headers.forEach((header, columnIndex) => {
-      if (header in employee) {
-        employee[header] = values[columnIndex] || "";
-      }
-    });
-
-    employee.full_name = employee.full_name.trim();
-    employee.email = employee.email.trim().toLowerCase();
-    employee.department = employee.department.trim();
-    employee.title = employee.title.trim();
-    employee.employee_code = employee.employee_code.trim();
-    employee.joining_date = employee.joining_date.trim();
-    employee.employment_status =
-      employee.employment_status.trim() || "Active";
-    employee.last_working_date = employee.last_working_date.trim();
-    employee.address = employee.address.trim();
-
-    const errors = [];
-
-    if (!employee.full_name) {
-      errors.push("Full name is required");
-    }
-
-    if (!employee.email) {
-      errors.push("Email is required");
-    } else if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(employee.email)
-    ) {
-      errors.push("Invalid email");
-    }
-
-    if (employee.email && emailSet.has(employee.email)) {
-      errors.push("Duplicate email in this CSV");
-    }
-
-    if (employee.email) {
-      emailSet.add(employee.email);
-    }
-
-    if (
-      employee.employee_code &&
-      employeeCodeSet.has(employee.employee_code.toLowerCase())
-    ) {
-      errors.push("Duplicate employee code in this CSV");
-    }
-
-    if (employee.employee_code) {
-      employeeCodeSet.add(employee.employee_code.toLowerCase());
-    }
-
-    if (
-      employee.employment_status &&
-      !EMPLOYMENT_STATUSES.includes(employee.employment_status)
-    ) {
-      errors.push(
-        `Invalid employment status. Use: ${EMPLOYMENT_STATUSES.join(", ")}`
+      headers.forEach(
+        (header, columnIndex) => {
+          if (header in employee) {
+            employee[header] =
+              values[columnIndex] || "";
+          }
+        }
       );
-    }
 
-    if (
-      employee.joining_date &&
-      Number.isNaN(new Date(employee.joining_date).getTime())
-    ) {
-      errors.push("Invalid joining date");
-    }
+      employee.full_name =
+        employee.full_name.trim();
 
-    if (
-      employee.last_working_date &&
-      Number.isNaN(new Date(employee.last_working_date).getTime())
-    ) {
-      errors.push("Invalid last working date");
-    }
+      employee.email =
+        employee.email
+          .trim()
+          .toLowerCase();
 
-    if (errors.length > 0) {
-      validationErrors.push({
-        row: rowNumber,
-        employee,
-        errors,
-      });
-    } else {
-      employees.push(employee);
+      employee.department =
+        employee.department.trim();
+
+      employee.location =
+        employee.location.trim();
+
+      employee.title =
+        employee.title.trim();
+
+      employee.employee_code =
+        employee.employee_code.trim();
+
+      employee.joining_date =
+        employee.joining_date.trim();
+
+      employee.employment_status =
+        employee.employment_status.trim() ||
+        "Active";
+
+      employee.last_working_date =
+        employee.last_working_date.trim();
+
+      employee.address =
+        employee.address.trim();
+
+      const errors = [];
+
+      if (!employee.full_name) {
+        errors.push(
+          "Full name is required"
+        );
+      }
+
+      if (!employee.email) {
+        errors.push(
+          "Email is required"
+        );
+      } else if (
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          employee.email
+        )
+      ) {
+        errors.push(
+          "Invalid email"
+        );
+      }
+
+      if (
+        employee.email &&
+        emailSet.has(employee.email)
+      ) {
+        errors.push(
+          "Duplicate email in this CSV"
+        );
+      }
+
+      if (employee.email) {
+        emailSet.add(
+          employee.email
+        );
+      }
+
+      if (
+        employee.employee_code &&
+        employeeCodeSet.has(
+          employee.employee_code.toLowerCase()
+        )
+      ) {
+        errors.push(
+          "Duplicate employee code in this CSV"
+        );
+      }
+
+      if (employee.employee_code) {
+        employeeCodeSet.add(
+          employee.employee_code.toLowerCase()
+        );
+      }
+
+      if (
+        employee.employment_status &&
+        !EMPLOYMENT_STATUSES.includes(
+          employee.employment_status
+        )
+      ) {
+        errors.push(
+          `Invalid employment status. Use: ${EMPLOYMENT_STATUSES.join(
+            ", "
+          )}`
+        );
+      }
+
+      if (
+        employee.joining_date &&
+        Number.isNaN(
+          new Date(
+            employee.joining_date
+          ).getTime()
+        )
+      ) {
+        errors.push(
+          "Invalid joining date"
+        );
+      }
+
+      if (
+        employee.last_working_date &&
+        Number.isNaN(
+          new Date(
+            employee.last_working_date
+          ).getTime()
+        )
+      ) {
+        errors.push(
+          "Invalid last working date"
+        );
+      }
+
+      if (
+        errors.length > 0
+      ) {
+        validationErrors.push({
+          row: rowNumber,
+          employee,
+          errors,
+        });
+      } else {
+        employees.push(employee);
+      }
     }
-  });
+  );
 
   return {
     employees,
@@ -264,22 +350,29 @@ function parseCSV(text) {
 
 function downloadTemplate() {
   const csv = [
-    "full_name,email,department,title,employee_code,joining_date,employment_status,last_working_date,address",
-    "Rahul Sharma,rahul@company.com,Marketing,Marketing Manager,EMP001,2026-01-15,Active,,Bangalore",
-    "Priya Rao,priya@company.com,Marketing,Marketing Executive,EMP002,2026-02-10,Active,,Mumbai",
-    "Amit Kumar,amit@company.com,IT,Software Engineer,EMP003,2025-08-20,Active,,Delhi",
-    "Sneha Patel,sneha@company.com,Finance,Accountant,EMP004,2024-05-12,Resigned,2026-03-31,Pune",
+    "full_name,email,department,location,title,employee_code,joining_date,employment_status,last_working_date,address",
+    "Rahul Sharma,rahul@company.com,Marketing,Bangalore,Marketing Manager,EMP001,2026-01-15,Active,,Whitefield Bangalore",
+    "Priya Rao,priya@company.com,Marketing,Mumbai,Marketing Executive,EMP002,2026-02-10,Active,,Andheri Mumbai",
+    "Amit Kumar,amit@company.com,IT,Delhi,Software Engineer,EMP003,2025-08-20,Active,,Noida Delhi NCR",
+    "Sneha Patel,sneha@company.com,Finance,Pune,Accountant,EMP004,2024-05-12,Resigned,2026-03-31,Kothrud Pune",
   ].join("\n");
 
-  const blob = new Blob([csv], {
-    type: "text/csv;charset=utf-8;",
-  });
+  const blob = new Blob(
+    [csv],
+    {
+      type: "text/csv;charset=utf-8;",
+    }
+  );
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+  const url =
+    URL.createObjectURL(blob);
+
+  const link =
+    document.createElement("a");
 
   link.href = url;
-  link.download = "employee-import-template.csv";
+  link.download =
+    "employee-import-template.csv";
 
   document.body.appendChild(link);
   link.click();
@@ -293,30 +386,62 @@ function downloadTemplate() {
 ------------------------------------------------------- */
 
 export default function Employees() {
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [employees, setEmployees] =
+    useState([]);
 
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [search, setSearch] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [error, setError] =
+    useState("");
 
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [showForm, setShowForm] =
+    useState(false);
 
-  const [deletingEmployee, setDeletingEmployee] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [form, setForm] =
+    useState(emptyForm);
 
-  const [showBulkImport, setShowBulkImport] = useState(false);
-  const [bulkEmployees, setBulkEmployees] = useState([]);
-  const [bulkErrors, setBulkErrors] = useState([]);
-  const [bulkFileName, setBulkFileName] = useState("");
-  const [bulkImporting, setBulkImporting] = useState(false);
-  const [bulkResult, setBulkResult] = useState(null);
+  const [saving, setSaving] =
+    useState(false);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [departmentFilter, setDepartmentFilter] =
+    useState("all");
+
+  const [statusFilter, setStatusFilter] =
+    useState("all");
+
+  const [selectedEmployee, setSelectedEmployee] =
+    useState(null);
+
+  const [editingEmployee, setEditingEmployee] =
+    useState(null);
+
+  const [deletingEmployee, setDeletingEmployee] =
+    useState(null);
+
+  const [deleting, setDeleting] =
+    useState(false);
+
+  const [showBulkImport, setShowBulkImport] =
+    useState(false);
+
+  const [bulkEmployees, setBulkEmployees] =
+    useState([]);
+
+  const [bulkErrors, setBulkErrors] =
+    useState([]);
+
+  const [bulkFileName, setBulkFileName] =
+    useState("");
+
+  const [bulkImporting, setBulkImporting] =
+    useState(false);
+
+  const [bulkResult, setBulkResult] =
+    useState(null);
 
   /* -------------------------------------------------------
      LOAD EMPLOYEES
@@ -327,11 +452,19 @@ export default function Employees() {
     setError("");
 
     try {
-      const data = await employeeService.list();
+      const data =
+        await employeeService.list();
 
-      setEmployees(Array.isArray(data) ? data : []);
+      setEmployees(
+        Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (err) {
-      console.error("Failed to load employees:", err);
+      console.error(
+        "Failed to load employees:",
+        err
+      );
 
       setError(
         "Couldn't load employees. Make sure the backend is running and your session is active."
@@ -351,43 +484,78 @@ export default function Employees() {
 
   const departments = useMemo(() => {
     const values = employees
-      .map((employee) => employee.department?.trim())
+      .map(
+        (employee) =>
+          employee.department?.trim()
+      )
       .filter(Boolean);
 
-    return [...new Set(values)].sort((a, b) =>
+    return [
+      ...new Set(values),
+    ].sort((a, b) =>
       a.localeCompare(b)
     );
   }, [employees]);
 
-  const filteredEmployees = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  const filteredEmployees =
+    useMemo(() => {
+      const query =
+        search.trim().toLowerCase();
 
-    return employees.filter((employee) => {
-      const matchesSearch =
-        !query ||
-        employee.full_name?.toLowerCase().includes(query) ||
-        employee.email?.toLowerCase().includes(query) ||
-        employee.department?.toLowerCase().includes(query) ||
-        employee.title?.toLowerCase().includes(query) ||
-        employee.employee_code?.toLowerCase().includes(query) ||
-        employee.address?.toLowerCase().includes(query) ||
-        employee.employment_status?.toLowerCase().includes(query);
+      return employees.filter(
+        (employee) => {
+          const matchesSearch =
+            !query ||
+            employee.full_name
+              ?.toLowerCase()
+              .includes(query) ||
+            employee.email
+              ?.toLowerCase()
+              .includes(query) ||
+            employee.department
+              ?.toLowerCase()
+              .includes(query) ||
+            employee.location
+              ?.toLowerCase()
+              .includes(query) ||
+            employee.title
+              ?.toLowerCase()
+              .includes(query) ||
+            employee.employee_code
+              ?.toLowerCase()
+              .includes(query) ||
+            employee.address
+              ?.toLowerCase()
+              .includes(query) ||
+            employee.employment_status
+              ?.toLowerCase()
+              .includes(query);
 
-      const matchesDepartment =
-        departmentFilter === "all" ||
-        employee.department === departmentFilter;
+          const matchesDepartment =
+            departmentFilter ===
+              "all" ||
+            employee.department ===
+              departmentFilter;
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        (employee.employment_status || "Active") === statusFilter;
+          const matchesStatus =
+            statusFilter === "all" ||
+            (employee.employment_status ||
+              "Active") ===
+              statusFilter;
 
-      return (
-        matchesSearch &&
-        matchesDepartment &&
-        matchesStatus
+          return (
+            matchesSearch &&
+            matchesDepartment &&
+            matchesStatus
+          );
+        }
       );
-    });
-  }, [employees, search, departmentFilter, statusFilter]);
+    }, [
+      employees,
+      search,
+      departmentFilter,
+      statusFilter,
+    ]);
 
   /* -------------------------------------------------------
      FORM
@@ -401,20 +569,44 @@ export default function Employees() {
   }
 
   function openEditForm(employee) {
-    setEditingEmployee(employee);
+    setEditingEmployee(
+      employee
+    );
+
     setSelectedEmployee(null);
 
     setForm({
-      full_name: employee.full_name || "",
-      email: employee.email || "",
-      department: employee.department || "",
-      title: employee.title || "",
-      employee_code: employee.employee_code || "",
-      joining_date: employee.joining_date || "",
+      full_name:
+        employee.full_name || "",
+
+      email:
+        employee.email || "",
+
+      department:
+        employee.department || "",
+
+      location:
+        employee.location || "",
+
+      title:
+        employee.title || "",
+
+      employee_code:
+        employee.employee_code || "",
+
+      joining_date:
+        employee.joining_date || "",
+
       employment_status:
-        employee.employment_status || "Active",
-      last_working_date: employee.last_working_date || "",
-      address: employee.address || "",
+        employee.employment_status ||
+        "Active",
+
+      last_working_date:
+        employee.last_working_date ||
+        "",
+
+      address:
+        employee.address || "",
     });
 
     setShowForm(true);
@@ -430,7 +622,10 @@ export default function Employees() {
   }
 
   function handleChange(event) {
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setForm((current) => ({
       ...current,
@@ -438,16 +633,24 @@ export default function Employees() {
     }));
   }
 
-  async function handleSubmit(event) {
+  async function handleSubmit(
+    event
+  ) {
     event.preventDefault();
 
-    if (!form.full_name.trim() || !form.email.trim()) {
-      setError("Full name and email are required.");
+    if (
+      !form.full_name.trim() ||
+      !form.email.trim()
+    ) {
+      setError(
+        "Full name and email are required."
+      );
       return;
     }
 
     if (
-      form.employment_status !== "Active" &&
+      form.employment_status !==
+        "Active" &&
       !form.last_working_date
     ) {
       setError(
@@ -460,50 +663,87 @@ export default function Employees() {
     setError("");
 
     const payload = {
-      full_name: form.full_name.trim(),
-      email: form.email.trim().toLowerCase(),
-      department: form.department.trim(),
-      title: form.title.trim(),
-      employee_code: form.employee_code.trim(),
-      joining_date: form.joining_date || null,
+      full_name:
+        form.full_name.trim(),
+
+      email:
+        form.email
+          .trim()
+          .toLowerCase(),
+
+      department:
+        form.department.trim(),
+
+      location:
+        form.location.trim(),
+
+      title:
+        form.title.trim(),
+
+      employee_code:
+        form.employee_code.trim(),
+
+      joining_date:
+        form.joining_date || null,
+
       employment_status:
-        form.employment_status || "Active",
+        form.employment_status ||
+        "Active",
+
       last_working_date:
-        form.last_working_date || null,
-      address: form.address.trim(),
+        form.last_working_date ||
+        null,
+
+      address:
+        form.address.trim(),
     };
 
     try {
       if (editingEmployee) {
-        const updated = await employeeService.update(
-          editingEmployee.id,
-          payload
+        const updated =
+          await employeeService.update(
+            editingEmployee.id,
+            payload
+          );
+
+        setEmployees(
+          (current) =>
+            current.map(
+              (employee) =>
+                employee.id ===
+                editingEmployee.id
+                  ? updated
+                  : employee
+            )
         );
 
-        setEmployees((current) =>
-          current.map((employee) =>
-            employee.id === editingEmployee.id
-              ? updated
-              : employee
-          )
+        setSelectedEmployee(
+          updated
         );
-
-        setSelectedEmployee(updated);
       } else {
-        const created = await employeeService.create(payload);
+        const created =
+          await employeeService.create(
+            payload
+          );
 
-        setEmployees((current) => [
-          created,
-          ...current,
-        ]);
+        setEmployees(
+          (current) => [
+            created,
+            ...current,
+          ]
+        );
       }
 
       closeForm();
     } catch (err) {
-      console.error("Failed to save employee:", err);
+      console.error(
+        "Failed to save employee:",
+        err
+      );
 
       setError(
-        err?.response?.data?.message ||
+        err?.response?.data
+          ?.message ||
           (editingEmployee
             ? "Couldn't update this employee. Please try again."
             : "Couldn't save this employee. Please try again.")
@@ -518,7 +758,9 @@ export default function Employees() {
   ------------------------------------------------------- */
 
   async function handleDelete() {
-    if (!deletingEmployee) return;
+    if (!deletingEmployee) {
+      return;
+    }
 
     setDeleting(true);
     setError("");
@@ -528,11 +770,13 @@ export default function Employees() {
         deletingEmployee.id
       );
 
-      setEmployees((current) =>
-        current.filter(
-          (employee) =>
-            employee.id !== deletingEmployee.id
-        )
+      setEmployees(
+        (current) =>
+          current.filter(
+            (employee) =>
+              employee.id !==
+              deletingEmployee.id
+          )
       );
 
       if (
@@ -544,10 +788,14 @@ export default function Employees() {
 
       setDeletingEmployee(null);
     } catch (err) {
-      console.error("Failed to delete employee:", err);
+      console.error(
+        "Failed to delete employee:",
+        err
+      );
 
       setError(
-        err?.response?.data?.message ||
+        err?.response?.data
+          ?.message ||
           "Couldn't delete this employee. Please try again."
       );
     } finally {
@@ -579,37 +827,56 @@ export default function Employees() {
   }
 
   function handleCSVFile(event) {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     if (!file) return;
 
-    setBulkFileName(file.name);
+    setBulkFileName(
+      file.name
+    );
+
     setBulkResult(null);
     setBulkEmployees([]);
     setBulkErrors([]);
 
-    if (!file.name.toLowerCase().endsWith(".csv")) {
+    if (
+      !file.name
+        .toLowerCase()
+        .endsWith(".csv")
+    ) {
       setBulkErrors([
         {
           row: null,
           employee: {},
-          errors: ["Please upload a CSV file"],
+          errors: [
+            "Please upload a CSV file",
+          ],
         },
       ]);
 
       return;
     }
 
-    const reader = new FileReader();
+    const reader =
+      new FileReader();
 
-    reader.onload = (loadEvent) => {
+    reader.onload = (
+      loadEvent
+    ) => {
       try {
-        const result = parseCSV(
-          loadEvent.target.result
+        const result =
+          parseCSV(
+            loadEvent.target.result
+          );
+
+        setBulkEmployees(
+          result.employees
         );
 
-        setBulkEmployees(result.employees);
-        setBulkErrors(result.validationErrors);
+        setBulkErrors(
+          result.validationErrors
+        );
       } catch (err) {
         setBulkErrors([
           {
@@ -629,7 +896,9 @@ export default function Employees() {
         {
           row: null,
           employee: {},
-          errors: ["Could not read this file"],
+          errors: [
+            "Could not read this file",
+          ],
         },
       ]);
     };
@@ -638,7 +907,9 @@ export default function Employees() {
   }
 
   async function handleBulkImport() {
-    if (bulkEmployees.length === 0) {
+    if (
+      bulkEmployees.length === 0
+    ) {
       setError(
         "There are no valid employee records to import."
       );
@@ -657,32 +928,51 @@ export default function Employees() {
 
       setBulkResult(result);
 
-      if (result.employees?.length) {
-        setEmployees((current) => [
-          ...result.employees,
-          ...current,
-        ]);
+      if (
+        result.employees?.length
+      ) {
+        setEmployees(
+          (current) => [
+            ...result.employees,
+            ...current,
+          ]
+        );
       }
 
-      if (result.rejectedRecords?.length) {
+      if (
+        result.rejectedRecords
+          ?.length
+      ) {
         setBulkErrors(
-          result.rejectedRecords.map((record) => ({
-            row: record.row,
-            employee: {
-              full_name: record.full_name,
-              email: record.email,
-            },
-            errors: record.errors,
-          }))
+          result.rejectedRecords.map(
+            (record) => ({
+              row: record.row,
+
+              employee: {
+                full_name:
+                  record.full_name,
+
+                email:
+                  record.email,
+              },
+
+              errors:
+                record.errors,
+            })
+          )
         );
       }
 
       setBulkEmployees([]);
     } catch (err) {
-      console.error("Bulk import failed:", err);
+      console.error(
+        "Bulk import failed:",
+        err
+      );
 
       setError(
-        err?.response?.data?.message ||
+        err?.response?.data
+          ?.message ||
           "Couldn't import the employees. Please try again."
       );
     } finally {
@@ -713,7 +1003,9 @@ export default function Employees() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={openBulkImport}
+            onClick={
+              openBulkImport
+            }
             className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
           >
             <Upload className="h-4 w-4" />
@@ -723,7 +1015,9 @@ export default function Employees() {
           <button
             type="button"
             onClick={
-              showForm ? closeForm : openAddForm
+              showForm
+                ? closeForm
+                : openAddForm
             }
             className="flex items-center gap-2 rounded-lg bg-brand-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-900"
           >
@@ -733,7 +1027,9 @@ export default function Employees() {
               <Plus className="h-4 w-4" />
             )}
 
-            {showForm ? "Cancel" : "Add employee"}
+            {showForm
+              ? "Cancel"
+              : "Add employee"}
           </button>
         </div>
       </div>
@@ -746,7 +1042,9 @@ export default function Employees() {
 
           <button
             type="button"
-            onClick={() => setError("")}
+            onClick={() =>
+              setError("")
+            }
             className="shrink-0 text-ink-500 hover:text-ink-900"
             aria-label="Dismiss error"
           >
@@ -759,7 +1057,9 @@ export default function Employees() {
 
       {showForm && (
         <form
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
           className="card mb-6 p-5"
         >
           <div className="mb-5">
@@ -791,8 +1091,12 @@ export default function Employees() {
                 id="full_name"
                 name="full_name"
                 required
-                value={form.full_name}
-                onChange={handleChange}
+                value={
+                  form.full_name
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="e.g. Raju Kumar"
                 className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
@@ -813,8 +1117,12 @@ export default function Employees() {
                 name="email"
                 type="email"
                 required
-                value={form.email}
-                onChange={handleChange}
+                value={
+                  form.email
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="employee@company.com"
                 className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
@@ -833,8 +1141,12 @@ export default function Employees() {
               <input
                 id="employee_code"
                 name="employee_code"
-                value={form.employee_code}
-                onChange={handleChange}
+                value={
+                  form.employee_code
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="e.g. EMP001"
                 className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
@@ -853,9 +1165,37 @@ export default function Employees() {
               <input
                 id="department"
                 name="department"
-                value={form.department}
-                onChange={handleChange}
+                value={
+                  form.department
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="e.g. Marketing"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              />
+            </div>
+
+            {/* LOCATION */}
+
+            <div>
+              <label
+                htmlFor="location"
+                className="mb-1.5 block text-sm font-medium text-ink-700"
+              >
+                Location
+              </label>
+
+              <input
+                id="location"
+                name="location"
+                value={
+                  form.location
+                }
+                onChange={
+                  handleChange
+                }
+                placeholder="e.g. Bangalore"
                 className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
             </div>
@@ -873,8 +1213,12 @@ export default function Employees() {
               <input
                 id="title"
                 name="title"
-                value={form.title}
-                onChange={handleChange}
+                value={
+                  form.title
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="e.g. Marketing Manager"
                 className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
@@ -894,8 +1238,12 @@ export default function Employees() {
                 id="joining_date"
                 name="joining_date"
                 type="date"
-                value={form.joining_date}
-                onChange={handleChange}
+                value={
+                  form.joining_date
+                }
+                onChange={
+                  handleChange
+                }
                 className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
             </div>
@@ -913,15 +1261,24 @@ export default function Employees() {
               <select
                 id="employment_status"
                 name="employment_status"
-                value={form.employment_status}
-                onChange={handleChange}
+                value={
+                  form.employment_status
+                }
+                onChange={
+                  handleChange
+                }
                 className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               >
-                {EMPLOYMENT_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
+                {EMPLOYMENT_STATUSES.map(
+                  (status) => (
+                    <option
+                      key={status}
+                      value={status}
+                    >
+                      {status}
+                    </option>
+                  )
+                )}
               </select>
             </div>
 
@@ -939,10 +1296,15 @@ export default function Employees() {
                 id="last_working_date"
                 name="last_working_date"
                 type="date"
-                value={form.last_working_date}
-                onChange={handleChange}
+                value={
+                  form.last_working_date
+                }
+                onChange={
+                  handleChange
+                }
                 disabled={
-                  form.employment_status === "Active"
+                  form.employment_status ===
+                  "Active"
                 }
                 className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400"
               />
@@ -962,8 +1324,12 @@ export default function Employees() {
                 id="address"
                 name="address"
                 rows={3}
-                value={form.address}
-                onChange={handleChange}
+                value={
+                  form.address
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Employee residential address"
                 className="w-full resize-y rounded-lg border border-ink-200 px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               />
@@ -987,7 +1353,9 @@ export default function Employees() {
 
             <button
               type="button"
-              onClick={closeForm}
+              onClick={
+                closeForm
+              }
               disabled={saving}
               className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-60"
             >
@@ -1066,7 +1434,9 @@ export default function Employees() {
               type="search"
               value={search}
               onChange={(event) =>
-                setSearch(event.target.value)
+                setSearch(
+                  event.target.value
+                )
               }
               placeholder="Search employees..."
               className="w-full rounded-lg border border-ink-200 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
@@ -1074,9 +1444,13 @@ export default function Employees() {
           </div>
 
           <select
-            value={departmentFilter}
+            value={
+              departmentFilter
+            }
             onChange={(event) =>
-              setDepartmentFilter(event.target.value)
+              setDepartmentFilter(
+                event.target.value
+              )
             }
             className="rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           >
@@ -1084,20 +1458,26 @@ export default function Employees() {
               All departments
             </option>
 
-            {departments.map((department) => (
-              <option
-                key={department}
-                value={department}
-              >
-                {department}
-              </option>
-            ))}
+            {departments.map(
+              (department) => (
+                <option
+                  key={department}
+                  value={department}
+                >
+                  {department}
+                </option>
+              )
+            )}
           </select>
 
           <select
-            value={statusFilter}
+            value={
+              statusFilter
+            }
             onChange={(event) =>
-              setStatusFilter(event.target.value)
+              setStatusFilter(
+                event.target.value
+              )
             }
             className="rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           >
@@ -1105,29 +1485,45 @@ export default function Employees() {
               All employment statuses
             </option>
 
-            {EMPLOYMENT_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
+            {EMPLOYMENT_STATUSES.map(
+              (status) => (
+                <option
+                  key={status}
+                  value={status}
+                >
+                  {status}
+                </option>
+              )
+            )}
           </select>
         </div>
 
         {(search ||
-          departmentFilter !== "all" ||
-          statusFilter !== "all") && (
+          departmentFilter !==
+            "all" ||
+          statusFilter !==
+            "all") && (
           <div className="mt-3 flex items-center justify-between gap-3">
             <p className="text-xs text-ink-400">
-              Showing {filteredEmployees.length} of{" "}
-              {employees.length} employees
+              Showing{" "}
+              {
+                filteredEmployees.length
+              }{" "}
+              of{" "}
+              {employees.length}{" "}
+              employees
             </p>
 
             <button
               type="button"
               onClick={() => {
                 setSearch("");
-                setDepartmentFilter("all");
-                setStatusFilter("all");
+                setDepartmentFilter(
+                  "all"
+                );
+                setStatusFilter(
+                  "all"
+                );
               }}
               className="text-xs font-medium text-brand-700 hover:text-brand-900"
             >
@@ -1145,7 +1541,8 @@ export default function Employees() {
             <Loader2 className="h-5 w-5 animate-spin" />
             Loading employee records...
           </div>
-        ) : employees.length === 0 ? (
+        ) : employees.length ===
+          0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ink-50 text-ink-400">
               <Users className="h-6 w-6" />
@@ -1164,7 +1561,9 @@ export default function Employees() {
             <div className="flex flex-wrap justify-center gap-2">
               <button
                 type="button"
-                onClick={openAddForm}
+                onClick={
+                  openAddForm
+                }
                 className="flex items-center gap-2 rounded-lg bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
               >
                 <Plus className="h-4 w-4" />
@@ -1173,7 +1572,9 @@ export default function Employees() {
 
               <button
                 type="button"
-                onClick={openBulkImport}
+                onClick={
+                  openBulkImport
+                }
                 className="flex items-center gap-2 rounded-lg border border-ink-200 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
               >
                 <Upload className="h-4 w-4" />
@@ -1181,7 +1582,8 @@ export default function Employees() {
               </button>
             </div>
           </div>
-        ) : filteredEmployees.length === 0 ? (
+        ) : filteredEmployees.length ===
+          0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
             <Search className="h-8 w-8 text-ink-300" />
 
@@ -1199,8 +1601,12 @@ export default function Employees() {
               type="button"
               onClick={() => {
                 setSearch("");
-                setDepartmentFilter("all");
-                setStatusFilter("all");
+                setDepartmentFilter(
+                  "all"
+                );
+                setStatusFilter(
+                  "all"
+                );
               }}
               className="text-sm font-medium text-brand-700 hover:text-brand-900"
             >
@@ -1209,7 +1615,7 @@ export default function Employees() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
+            <table className="w-full min-w-[1200px] text-left text-sm">
               <thead className="border-b border-ink-100 bg-ink-50/50 text-xs uppercase tracking-wide text-ink-400">
                 <tr>
                   <th className="px-5 py-3 font-medium">
@@ -1222,6 +1628,10 @@ export default function Employees() {
 
                   <th className="px-5 py-3 font-medium">
                     Department
+                  </th>
+
+                  <th className="px-5 py-3 font-medium">
+                    Location
                   </th>
 
                   <th className="px-5 py-3 font-medium">
@@ -1243,105 +1653,131 @@ export default function Employees() {
               </thead>
 
               <tbody>
-                {filteredEmployees.map((employee) => {
-                  const status =
-                    employee.employment_status ||
-                    "Active";
+                {filteredEmployees.map(
+                  (employee) => {
+                    const status =
+                      employee.employment_status ||
+                      "Active";
 
-                  return (
-                    <tr
-                      key={employee.id}
-                      className="border-b border-ink-50 last:border-0 hover:bg-ink-50/40"
-                    >
-                      <td className="px-5 py-4">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSelectedEmployee(employee)
-                          }
-                          className="group flex items-center gap-3 text-left"
-                        >
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                            <UserRound className="h-4 w-4" />
-                          </span>
-
-                          <span className="min-w-0">
-                            <span className="block font-medium text-ink-900 group-hover:text-brand-700">
-                              {employee.full_name}
+                    return (
+                      <tr
+                        key={
+                          employee.id
+                        }
+                        className="border-b border-ink-50 last:border-0 hover:bg-ink-50/40"
+                      >
+                        <td className="px-5 py-4">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedEmployee(
+                                employee
+                              )
+                            }
+                            className="group flex items-center gap-3 text-left"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+                              <UserRound className="h-4 w-4" />
                             </span>
 
-                            <span className="mt-0.5 block text-xs text-ink-500">
-                              {employee.email}
+                            <span className="min-w-0">
+                              <span className="block font-medium text-ink-900 group-hover:text-brand-700">
+                                {
+                                  employee.full_name
+                                }
+                              </span>
+
+                              <span className="mt-0.5 block text-xs text-ink-500">
+                                {
+                                  employee.email
+                                }
+                              </span>
                             </span>
+                          </button>
+                        </td>
+
+                        <td className="px-5 py-4 text-ink-600">
+                          {employee.employee_code ||
+                            "—"}
+                        </td>
+
+                        <td className="px-5 py-4 text-ink-600">
+                          {employee.department ||
+                            "—"}
+                        </td>
+
+                        <td className="px-5 py-4 text-ink-600">
+                          {employee.location ||
+                            "—"}
+                        </td>
+
+                        <td className="px-5 py-4 text-ink-600">
+                          {employee.title ||
+                            "—"}
+                        </td>
+
+                        <td className="px-5 py-4 text-ink-500">
+                          {formatDate(
+                            employee.joining_date
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClasses(
+                              status
+                            )}`}
+                          >
+                            {status}
                           </span>
-                        </button>
-                      </td>
+                        </td>
 
-                      <td className="px-5 py-4 text-ink-600">
-                        {employee.employee_code || "—"}
-                      </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedEmployee(
+                                  employee
+                                )
+                              }
+                              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
+                            >
+                              View
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
 
-                      <td className="px-5 py-4 text-ink-600">
-                        {employee.department || "—"}
-                      </td>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openEditForm(
+                                  employee
+                                )
+                              }
+                              className="flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </button>
 
-                      <td className="px-5 py-4 text-ink-600">
-                        {employee.title || "—"}
-                      </td>
-
-                      <td className="px-5 py-4 text-ink-500">
-                        {formatDate(employee.joining_date)}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClasses(
-                            status
-                          )}`}
-                        >
-                          {status}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedEmployee(employee)
-                            }
-                            className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
-                          >
-                            View
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openEditForm(employee)
-                            }
-                            className="flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDeletingEmployee(employee)
-                            }
-                            className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeletingEmployee(
+                                  employee
+                                )
+                              }
+                              className="flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                )}
               </tbody>
             </table>
           </div>
@@ -1360,14 +1796,18 @@ export default function Employees() {
                 </p>
 
                 <h2 className="mt-1 text-lg font-semibold text-ink-950">
-                  {selectedEmployee.full_name}
+                  {
+                    selectedEmployee.full_name
+                  }
                 </h2>
               </div>
 
               <button
                 type="button"
                 onClick={() =>
-                  setSelectedEmployee(null)
+                  setSelectedEmployee(
+                    null
+                  )
                 }
                 className="rounded-lg p-2 text-ink-400 hover:bg-ink-50 hover:text-ink-800"
                 aria-label="Close employee details"
@@ -1393,7 +1833,26 @@ export default function Employees() {
                     </p>
 
                     <p className="text-sm font-medium text-ink-800">
-                      {selectedEmployee.email}
+                      {
+                        selectedEmployee.email
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-start gap-3">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
+
+                  <div>
+                    <p className="text-xs text-ink-400">
+                      Location
+                    </p>
+
+                    <p className="text-sm font-medium text-ink-800">
+                      {
+                        selectedEmployee.location ||
+                        "Not specified"
+                      }
                     </p>
                   </div>
                 </div>
@@ -1407,8 +1866,10 @@ export default function Employees() {
                     </p>
 
                     <p className="text-sm font-medium leading-relaxed text-ink-800">
-                      {selectedEmployee.address ||
-                        "Not specified"}
+                      {
+                        selectedEmployee.address ||
+                        "Not specified"
+                      }
                     </p>
                   </div>
                 </div>
@@ -1425,8 +1886,10 @@ export default function Employees() {
                   </p>
 
                   <p className="mt-1 text-sm font-medium text-ink-800">
-                    {selectedEmployee.employee_code ||
-                      "Not specified"}
+                    {
+                      selectedEmployee.employee_code ||
+                      "Not specified"
+                    }
                   </p>
                 </div>
 
@@ -1438,8 +1901,25 @@ export default function Employees() {
                   </p>
 
                   <p className="mt-1 text-sm font-medium text-ink-800">
-                    {selectedEmployee.department ||
-                      "Not specified"}
+                    {
+                      selectedEmployee.department ||
+                      "Not specified"
+                    }
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-ink-100 p-4">
+                  <MapPin className="mb-3 h-5 w-5 text-brand-700" />
+
+                  <p className="text-xs text-ink-400">
+                    Location
+                  </p>
+
+                  <p className="mt-1 text-sm font-medium text-ink-800">
+                    {
+                      selectedEmployee.location ||
+                      "Not specified"
+                    }
                   </p>
                 </div>
 
@@ -1451,8 +1931,10 @@ export default function Employees() {
                   </p>
 
                   <p className="mt-1 text-sm font-medium text-ink-800">
-                    {selectedEmployee.title ||
-                      "Not specified"}
+                    {
+                      selectedEmployee.title ||
+                      "Not specified"
+                    }
                   </p>
                 </div>
 
@@ -1563,7 +2045,9 @@ export default function Employees() {
                 <button
                   type="button"
                   onClick={() =>
-                    openEditForm(selectedEmployee)
+                    openEditForm(
+                      selectedEmployee
+                    )
                   }
                   className="flex items-center gap-2 rounded-lg bg-brand-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-900"
                 >
@@ -1592,7 +2076,9 @@ export default function Employees() {
             <p className="mt-2 text-sm leading-relaxed text-ink-500">
               You are about to permanently delete{" "}
               <span className="font-medium text-ink-800">
-                {deletingEmployee.full_name}
+                {
+                  deletingEmployee.full_name
+                }
               </span>{" "}
               from the employee database.
             </p>
@@ -1606,7 +2092,9 @@ export default function Employees() {
                 type="button"
                 disabled={deleting}
                 onClick={() =>
-                  setDeletingEmployee(null)
+                  setDeletingEmployee(
+                    null
+                  )
                 }
                 className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-60"
               >
@@ -1616,7 +2104,9 @@ export default function Employees() {
               <button
                 type="button"
                 disabled={deleting}
-                onClick={handleDelete}
+                onClick={
+                  handleDelete
+                }
                 className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {deleting && (
@@ -1659,8 +2149,12 @@ export default function Employees() {
 
               <button
                 type="button"
-                onClick={closeBulkImport}
-                disabled={bulkImporting}
+                onClick={
+                  closeBulkImport
+                }
+                disabled={
+                  bulkImporting
+                }
                 className="rounded-lg p-2 text-ink-400 hover:bg-ink-50 hover:text-ink-800 disabled:opacity-50"
                 aria-label="Close bulk import"
               >
@@ -1691,7 +2185,7 @@ export default function Employees() {
                         </p>
 
                         <p className="mt-1 text-xs leading-relaxed text-ink-400">
-                          Optional: department, title,
+                          Optional: department, location, title,
                           employee_code, joining_date,
                           employment_status,
                           last_working_date, address
@@ -1700,7 +2194,9 @@ export default function Employees() {
 
                       <button
                         type="button"
-                        onClick={downloadTemplate}
+                        onClick={
+                          downloadTemplate
+                        }
                         className="flex shrink-0 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-medium text-ink-700 hover:bg-ink-50"
                       >
                         <Download className="h-4 w-4" />
@@ -1729,29 +2225,40 @@ export default function Employees() {
                     <input
                       type="file"
                       accept=".csv,text/csv"
-                      onChange={handleCSVFile}
+                      onChange={
+                        handleCSVFile
+                      }
                       className="hidden"
                     />
                   </label>
 
                   {/* VALIDATION ERRORS */}
 
-                  {bulkErrors.length > 0 && (
+                  {bulkErrors.length >
+                    0 && (
                     <div className="mt-5 rounded-xl border border-amber-200 bg-amber-soft p-4">
                       <div className="flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-amber-700" />
 
                         <p className="text-sm font-semibold text-ink-800">
-                          {bulkErrors.length} record
-                          {bulkErrors.length === 1
+                          {
+                            bulkErrors.length
+                          }{" "}
+                          record
+                          {bulkErrors.length ===
+                          1
                             ? ""
-                            : "s"} need attention
+                            : "s"}{" "}
+                          need attention
                         </p>
                       </div>
 
                       <div className="mt-3 max-h-40 overflow-y-auto">
                         {bulkErrors.map(
-                          (item, index) => (
+                          (
+                            item,
+                            index
+                          ) => (
                             <div
                               key={`${item.row}-${index}`}
                               className="border-t border-amber-200 py-2 first:border-0"
@@ -1761,14 +2268,17 @@ export default function Employees() {
                                   ? `Row ${item.row}`
                                   : "Import error"}
 
-                                {item.employee
+                                {item
+                                  .employee
                                   ?.email
                                   ? ` — ${item.employee.email}`
                                   : ""}
                               </p>
 
                               <p className="mt-0.5 text-xs text-ink-500">
-                                {item.errors.join(", ")}
+                                {item.errors.join(
+                                  ", "
+                                )}
                               </p>
                             </div>
                           )
@@ -1779,7 +2289,8 @@ export default function Employees() {
 
                   {/* PREVIEW */}
 
-                  {bulkEmployees.length > 0 && (
+                  {bulkEmployees.length >
+                    0 && (
                     <div className="mt-5">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
@@ -1788,23 +2299,29 @@ export default function Employees() {
                           </p>
 
                           <p className="mt-0.5 text-xs text-ink-400">
-                            {bulkEmployees.length} valid
-                            record
+                            {
+                              bulkEmployees.length
+                            }{" "}
+                            valid record
                             {bulkEmployees.length ===
                             1
                               ? ""
-                              : "s"} ready to import
+                              : "s"}{" "}
+                            ready to import
                           </p>
                         </div>
 
                         <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">
-                          {bulkEmployees.length} valid
+                          {
+                            bulkEmployees.length
+                          }{" "}
+                          valid
                         </span>
                       </div>
 
                       <div className="overflow-hidden rounded-xl border border-ink-100">
                         <div className="max-h-72 overflow-auto">
-                          <table className="w-full min-w-[1100px] text-left text-sm">
+                          <table className="w-full min-w-[1200px] text-left text-sm">
                             <thead className="sticky top-0 border-b border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-400">
                               <tr>
                                 <th className="px-4 py-3 font-medium">
@@ -1824,6 +2341,10 @@ export default function Employees() {
                                 </th>
 
                                 <th className="px-4 py-3 font-medium">
+                                  Location
+                                </th>
+
+                                <th className="px-4 py-3 font-medium">
                                   Title
                                 </th>
 
@@ -1839,7 +2360,10 @@ export default function Employees() {
 
                             <tbody>
                               {bulkEmployees.map(
-                                (employee, index) => (
+                                (
+                                  employee,
+                                  index
+                                ) => (
                                   <tr
                                     key={`${employee.email}-${index}`}
                                     className="border-b border-ink-50 last:border-0"
@@ -1851,22 +2375,37 @@ export default function Employees() {
                                     </td>
 
                                     <td className="px-4 py-3 text-ink-600">
-                                      {employee.email}
+                                      {
+                                        employee.email
+                                      }
                                     </td>
 
                                     <td className="px-4 py-3 text-ink-600">
-                                      {employee.employee_code ||
-                                        "—"}
+                                      {
+                                        employee.employee_code ||
+                                        "—"
+                                      }
                                     </td>
 
                                     <td className="px-4 py-3 text-ink-600">
-                                      {employee.department ||
-                                        "—"}
+                                      {
+                                        employee.department ||
+                                        "—"
+                                      }
                                     </td>
 
                                     <td className="px-4 py-3 text-ink-600">
-                                      {employee.title ||
-                                        "—"}
+                                      {
+                                        employee.location ||
+                                        "—"
+                                      }
+                                    </td>
+
+                                    <td className="px-4 py-3 text-ink-600">
+                                      {
+                                        employee.title ||
+                                        "—"
+                                      }
                                     </td>
 
                                     <td className="px-4 py-3 text-ink-600">
@@ -1920,7 +2459,10 @@ export default function Employees() {
                       </p>
 
                       <p className="mt-1 text-2xl font-semibold text-ink-950">
-                        {bulkResult.imported || 0}
+                        {
+                          bulkResult.imported ||
+                          0
+                        }
                       </p>
                     </div>
 
@@ -1930,12 +2472,16 @@ export default function Employees() {
                       </p>
 
                       <p className="mt-1 text-2xl font-semibold text-ink-950">
-                        {bulkResult.rejected || 0}
+                        {
+                          bulkResult.rejected ||
+                          0
+                        }
                       </p>
                     </div>
                   </div>
 
-                  {bulkResult.rejected > 0 && (
+                  {bulkResult.rejected >
+                    0 && (
                     <div className="mx-auto mt-5 max-w-md rounded-xl bg-amber-soft p-4 text-left">
                       <p className="text-sm font-medium text-ink-800">
                         Some records were not imported.
@@ -1963,20 +2509,29 @@ export default function Employees() {
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={closeBulkImport}
-                  disabled={bulkImporting}
+                  onClick={
+                    closeBulkImport
+                  }
+                  disabled={
+                    bulkImporting
+                  }
                   className="rounded-lg border border-ink-200 px-4 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-60"
                 >
-                  {bulkResult ? "Close" : "Cancel"}
+                  {bulkResult
+                    ? "Close"
+                    : "Cancel"}
                 </button>
 
                 {!bulkResult && (
                   <button
                     type="button"
-                    onClick={handleBulkImport}
+                    onClick={
+                      handleBulkImport
+                    }
                     disabled={
                       bulkImporting ||
-                      bulkEmployees.length === 0
+                      bulkEmployees.length ===
+                        0
                     }
                     className="flex items-center gap-2 rounded-lg bg-brand-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-900 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -1985,7 +2540,8 @@ export default function Employees() {
                     )}
 
                     Import{" "}
-                    {bulkEmployees.length > 0
+                    {bulkEmployees.length >
+                    0
                       ? `${bulkEmployees.length} employees`
                       : "employees"}
                   </button>
