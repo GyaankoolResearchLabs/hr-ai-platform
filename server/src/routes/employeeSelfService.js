@@ -8,6 +8,50 @@ const router = Router();
 
 router.use(requireAuth);
 
+const EMPLOYEE_EDITABLE_STATUSES = [
+  "submitted",
+  "open",
+];
+
+const PRIORITIES = [
+  "low",
+  "normal",
+  "high",
+  "urgent",
+];
+
+function clean(value) {
+  return String(value ?? "").trim();
+}
+
+function normalizePriority(value) {
+  const priority = clean(value).toLowerCase();
+
+  return PRIORITIES.includes(priority)
+    ? priority
+    : "normal";
+}
+
+function normalizeEmployeeRequest(row) {
+  if (!row) {
+    return row;
+  }
+
+  return {
+    ...row,
+    request_type: row.category || "general",
+    requestType: row.category || "general",
+    subject: row.title || "",
+    requester_id: row.requested_by,
+    ticket_number:
+      row.ticket_number ||
+      (row.id
+        ? `REQ-${String(row.id).slice(0, 8).toUpperCase()}`
+        : null),
+    hr_notes: row.resolution_note || null,
+  };
+}
+
 /*
 |--------------------------------------------------------------------------
 | GET /api/employee-self-service
@@ -35,10 +79,10 @@ router.get("/", async (req, res) => {
     }
 
     const { data, error } = await supabaseAdmin
-      .from("employee_self_service_requests")
+      .from("hr_requests")
       .select("*")
       .eq("organization_id", organization.id)
-      .eq("requester_id", userId)
+      .eq("requested_by", userId)
       .order("created_at", {
         ascending: false,
       });
@@ -52,7 +96,7 @@ router.get("/", async (req, res) => {
       });
     }
 
-    return res.json(data || []);
+    return res.json((data || []).map(normalizeEmployeeRequest));
   } catch (error) {
     console.error("[EmployeeSelfService] GET exception:", error);
 
@@ -93,6 +137,7 @@ router.post("/", async (req, res) => {
       requestType,
       subject,
       description,
+      priority,
     } = req.body || {};
 
     /*
@@ -126,24 +171,24 @@ router.post("/", async (req, res) => {
     |
     | IMPORTANT:
     |
-    | requester_id = authenticated Supabase user
-    | priority      = normal
-    | status        = open
+    | requested_by = authenticated Supabase user
+    | status       = submitted
     |
-    | Do NOT send ticket_number here.
+    | This uses the same hr_requests table consumed by the
+    | HR Employee Request Tracker.
     |--------------------------------------------------------------------------
     */
 
     const { data, error } = await supabaseAdmin
-      .from("employee_self_service_requests")
+      .from("hr_requests")
       .insert({
         organization_id: organization.id,
-        requester_id: userId,
-        request_type: requestType.trim(),
-        subject: subject.trim(),
+        requested_by: userId,
+        category: requestType.trim().toLowerCase(),
+        title: subject.trim(),
         description: description.trim(),
-        priority: "normal",
-        status: "open",
+        priority: normalizePriority(priority),
+        status: "submitted",
       })
       .select()
       .single();
@@ -165,7 +210,7 @@ router.post("/", async (req, res) => {
       data.id
     );
 
-    return res.status(201).json(data);
+    return res.status(201).json(normalizeEmployeeRequest(data));
   } catch (error) {
     console.error(
       "[EmployeeSelfService] POST exception:",
@@ -206,11 +251,11 @@ router.get("/:id", async (req, res) => {
     }
 
     const { data, error } = await supabaseAdmin
-      .from("employee_self_service_requests")
+      .from("hr_requests")
       .select("*")
       .eq("id", req.params.id)
       .eq("organization_id", organization.id)
-      .eq("requester_id", userId)
+      .eq("requested_by", userId)
       .maybeSingle();
 
     if (error) {
@@ -231,7 +276,7 @@ router.get("/:id", async (req, res) => {
       });
     }
 
-    return res.json(data);
+    return res.json(normalizeEmployeeRequest(data));
   } catch (error) {
     console.error(
       "[EmployeeSelfService] GET/:id exception:",
@@ -274,6 +319,7 @@ router.patch("/:id", async (req, res) => {
     const {
       subject,
       description,
+      priority,
     } = req.body || {};
 
     const updates = {
@@ -300,13 +346,17 @@ router.patch("/:id", async (req, res) => {
       updates.description = description.trim();
     }
 
+    if (priority !== undefined) {
+      updates.priority = normalizePriority(priority);
+    }
+
     const { data, error } = await supabaseAdmin
-      .from("employee_self_service_requests")
+      .from("hr_requests")
       .update(updates)
       .eq("id", req.params.id)
       .eq("organization_id", organization.id)
-      .eq("requester_id", userId)
-      .eq("status", "open")
+      .eq("requested_by", userId)
+      .in("status", EMPLOYEE_EDITABLE_STATUSES)
       .select()
       .single();
 
@@ -322,7 +372,7 @@ router.patch("/:id", async (req, res) => {
       });
     }
 
-    return res.json(data);
+    return res.json(normalizeEmployeeRequest(data));
   } catch (error) {
     console.error(
       "[EmployeeSelfService] PATCH exception:",
@@ -363,12 +413,12 @@ router.delete("/:id", async (req, res) => {
     }
 
     const { error } = await supabaseAdmin
-      .from("employee_self_service_requests")
+      .from("hr_requests")
       .delete()
       .eq("id", req.params.id)
       .eq("organization_id", organization.id)
-      .eq("requester_id", userId)
-      .eq("status", "open");
+      .eq("requested_by", userId)
+      .in("status", EMPLOYEE_EDITABLE_STATUSES);
 
     if (error) {
       console.error(

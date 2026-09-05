@@ -22,6 +22,7 @@ import Signup from "./pages/Signup";
 
 import OrganizationSetup from "./pages/OrganizationSetup";
 import Dashboard from "./pages/Dashboard";
+import EmployeeDashboard from "./pages/EmployeeDashboard";
 import CategoryDetail from "./pages/CategoryDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Employees from "./pages/Employees";
@@ -186,6 +187,11 @@ export default function App() {
             <Route
               path="dashboard"
               element={<Dashboard />}
+            />
+
+            <Route
+              path="employee/dashboard"
+              element={<EmployeeDashboard />}
             />
 
             {/* =================================================

@@ -5,6 +5,9 @@ import { requireAuth } from "../middleware/auth.js";
 import { supabaseAdmin } from "../config/supabase.js";
 
 import { getOrganizationForUser } from "../services/organizationLookup.js";
+import {
+  resolveEmployeeForUser,
+} from "../services/employeeIdentityService.js";
 
 const router = Router();
 
@@ -196,6 +199,390 @@ async function getOrganizationEmployee(
     error: null,
   };
 }
+
+async function getCurrentEmployee(req) {
+  return resolveEmployeeForUser({
+    organizationId:
+      req.organization?.id,
+
+    userId:
+      req.user?.id,
+
+    email:
+      req.user?.email,
+  });
+}
+
+/* =========================================================
+   CURRENT EMPLOYEE SELF-SERVICE
+========================================================= */
+
+router.get(
+  "/me/attendance",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      let query =
+        supabaseAdmin
+          .from("attendance_records")
+          .select("*")
+          .eq(
+            "organization_id",
+            req.organization.id,
+          )
+          .eq(
+            "employee_id",
+            employee.id,
+          )
+          .order(
+            "attendance_date",
+            {
+              ascending: false,
+            },
+          );
+
+      if (req.query.from_date) {
+        query = query.gte(
+          "attendance_date",
+          req.query.from_date,
+        );
+      }
+
+      if (req.query.to_date) {
+        query = query.lte(
+          "attendance_date",
+          req.query.to_date,
+        );
+      }
+
+      const { data, error } =
+        await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return res.json({
+        employee,
+        attendance:
+          data || [],
+      });
+    } catch (error) {
+      console.error(
+        "Current employee attendance error:",
+        error,
+      );
+
+      return res.status(
+        error.status || 500,
+      ).json({
+        message:
+          error.message ||
+          "Could not load attendance records",
+      });
+    }
+  },
+);
+
+router.get(
+  "/me/leave/balances",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      const { data, error } =
+        await supabaseAdmin
+          .from("leave_balances")
+          .select("*")
+          .eq(
+            "organization_id",
+            req.organization.id,
+          )
+          .eq(
+            "employee_id",
+            employee.id,
+          )
+          .order(
+            "leave_type",
+            {
+              ascending: true,
+            },
+          );
+
+      if (error) {
+        throw error;
+      }
+
+      return res.json({
+        employee,
+        balances:
+          data || [],
+      });
+    } catch (error) {
+      console.error(
+        "Current employee leave balances error:",
+        error,
+      );
+
+      return res.status(
+        error.status || 500,
+      ).json({
+        message:
+          error.message ||
+          "Could not load leave balances",
+      });
+    }
+  },
+);
+
+router.get(
+  "/me/leave/requests",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      let query =
+        supabaseAdmin
+          .from("leave_requests")
+          .select("*")
+          .eq(
+            "organization_id",
+            req.organization.id,
+          )
+          .eq(
+            "employee_id",
+            employee.id,
+          )
+          .order(
+            "created_at",
+            {
+              ascending: false,
+            },
+          );
+
+      if (req.query.status) {
+        query = query.eq(
+          "status",
+          req.query.status,
+        );
+      }
+
+      const { data, error } =
+        await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return res.json({
+        employee,
+        requests:
+          data || [],
+      });
+    } catch (error) {
+      console.error(
+        "Current employee leave requests error:",
+        error,
+      );
+
+      return res.status(
+        error.status || 500,
+      ).json({
+        message:
+          error.message ||
+          "Could not load leave requests",
+      });
+    }
+  },
+);
+
+router.post(
+  "/me/leave/requests",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      const {
+        leave_type,
+        start_date,
+        end_date,
+        reason,
+      } = req.body || {};
+
+      if (!leave_type) {
+        return res.status(400).json({
+          message:
+            "Leave type is required",
+        });
+      }
+
+      if (!start_date) {
+        return res.status(400).json({
+          message:
+            "Start date is required",
+        });
+      }
+
+      if (!end_date) {
+        return res.status(400).json({
+          message:
+            "End date is required",
+        });
+      }
+
+      if (
+        !isValidDate(start_date) ||
+        !isValidDate(end_date)
+      ) {
+        return res.status(400).json({
+          message:
+            "Invalid leave dates",
+        });
+      }
+
+      if (
+        new Date(start_date) >
+        new Date(end_date)
+      ) {
+        return res.status(400).json({
+          message:
+            "End date cannot be before start date",
+        });
+      }
+
+      const totalDays =
+        calculateLeaveDays(
+          start_date,
+          end_date,
+        );
+
+      if (totalDays <= 0) {
+        return res.status(400).json({
+          message:
+            "Leave duration must be at least one day",
+        });
+      }
+
+      const {
+        data: overlappingRequests,
+        error:
+          overlapError,
+      } = await supabaseAdmin
+        .from("leave_requests")
+        .select(
+          "id, start_date, end_date, status",
+        )
+        .eq(
+          "organization_id",
+          req.organization.id,
+        )
+        .eq(
+          "employee_id",
+          employee.id,
+        )
+        .in(
+          "status",
+          [
+            "Pending",
+            "Approved",
+          ],
+        )
+        .lte(
+          "start_date",
+          end_date,
+        )
+        .gte(
+          "end_date",
+          start_date,
+        );
+
+      if (overlapError) {
+        throw overlapError;
+      }
+
+      if (
+        overlappingRequests &&
+        overlappingRequests.length > 0
+      ) {
+        return res.status(409).json({
+          message:
+            "You already have an overlapping leave request",
+          requests:
+            overlappingRequests,
+        });
+      }
+
+      const { data, error } =
+        await supabaseAdmin
+          .from("leave_requests")
+          .insert({
+            organization_id:
+              req.organization.id,
+
+            employee_id:
+              employee.id,
+
+            leave_type:
+              cleanString(
+                leave_type,
+              ),
+
+            start_date,
+
+            end_date,
+
+            total_days:
+              totalDays,
+
+            reason:
+              cleanOptionalString(
+                reason,
+              ),
+
+            status:
+              "Pending",
+          })
+          .select(
+            `
+              *,
+              employees (
+                id,
+                full_name,
+                email,
+                department,
+                title,
+                employee_code
+              )
+            `,
+          )
+          .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return res.status(201).json(data);
+    } catch (error) {
+      console.error(
+        "Current employee leave request creation error:",
+        error,
+      );
+
+      return res.status(
+        error.status || 500,
+      ).json({
+        message:
+          error.message ||
+          "Could not create leave request",
+      });
+    }
+  },
+);
 
 /* =========================================================
    ATTENDANCE

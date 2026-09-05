@@ -1,6 +1,10 @@
 import express from "express";
 
 import { requireAuth } from "../middleware/auth.js";
+import { supabaseAdmin } from "../config/supabase.js";
+import {
+  resolveEmployeeForUser,
+} from "../services/employeeIdentityService.js";
 
 import {
   createPayrollRun,
@@ -60,6 +64,19 @@ function handleError(res, error, fallbackMessage) {
   });
 }
 
+async function getCurrentEmployee(req) {
+  return resolveEmployeeForUser({
+    organizationId:
+      getOrganizationId(req),
+
+    userId:
+      getUserId(req),
+
+    email:
+      req.user?.email,
+  });
+}
+
 /* =========================================================
    GET ALL PAYROLL RUNS
    GET /api/payroll-runs
@@ -90,6 +107,96 @@ router.get("/", async (req, res) => {
       res,
       error,
       "Could not load payroll runs.",
+    );
+  }
+});
+
+/* =========================================================
+   CURRENT EMPLOYEE PAYROLL
+   GET /api/payroll-runs/me
+========================================================= */
+
+router.get("/me", async (req, res) => {
+  try {
+    const organizationId =
+      getOrganizationId(req);
+
+    if (!organizationId) {
+      return res.status(400).json({
+        message:
+          "Organization is required.",
+      });
+    }
+
+    const employee =
+      await getCurrentEmployee(req);
+
+    const limit =
+      Math.min(
+        Math.max(
+          Number(req.query.limit) || 12,
+          1,
+        ),
+        36,
+      );
+
+    const {
+      data,
+      error,
+    } =
+      await supabaseAdmin
+        .from("payroll_run_items")
+        .select(`
+          *,
+          payroll_runs (
+            id,
+            payroll_month,
+            status,
+            processed_at,
+            approved_at,
+            notes
+          )
+        `)
+        .eq(
+          "organization_id",
+          organizationId,
+        )
+        .eq(
+          "employee_id",
+          employee.id,
+        )
+        .eq(
+          "payroll_runs.status",
+          "processed",
+        )
+        .order(
+          "created_at",
+          {
+            ascending: false,
+          },
+        )
+        .limit(limit);
+
+    if (error) {
+      throw error;
+    }
+
+    const payroll =
+      (data || []).filter(
+        (item) =>
+          item.payroll_runs,
+      );
+
+    return res.json({
+      employee,
+      data:
+        payroll,
+    });
+  } catch (error) {
+    return handleError(
+      res,
+      error,
+      "Could not load employee payroll.",
     );
   }
 });

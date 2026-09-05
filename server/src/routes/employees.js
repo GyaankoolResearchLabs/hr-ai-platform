@@ -3,6 +3,9 @@ import { requireAuth } from "../middleware/auth.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 import { createAuditLog } from "../services/auditLogService.js";
+import {
+  resolveEmployeeForUser,
+} from "../services/employeeIdentityService.js";
 
 const router = Router();
 
@@ -281,6 +284,54 @@ router.get("/", async (req, res) => {
     return res.status(500).json({
       message:
         "Could not load employees",
+    });
+  }
+});
+
+/* =========================================================
+   GET CURRENT EMPLOYEE PROFILE
+   GET /api/employees/me
+========================================================= */
+
+router.get("/me", async (req, res) => {
+  try {
+    const employee =
+      await resolveEmployeeForUser({
+        organizationId:
+          req.organization.id,
+
+        userId:
+          req.user?.id,
+
+        email:
+          req.user?.email,
+      });
+
+    await auditEmployeeAction({
+      req,
+
+      action:
+        "employee.self_view",
+
+      employee,
+
+      description:
+        "Viewed own employee profile.",
+    });
+
+    return res.json(employee);
+  } catch (error) {
+    console.error(
+      "Load current employee profile error:",
+      error,
+    );
+
+    return res.status(
+      error.status || 500,
+    ).json({
+      message:
+        error.message ||
+        "Could not load employee profile",
     });
   }
 });

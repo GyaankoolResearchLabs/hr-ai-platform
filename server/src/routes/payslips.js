@@ -10,6 +10,10 @@ import {
 } from "../utils/requestContext.js";
 
 import {
+  resolveEmployeeForUser,
+} from "../services/employeeIdentityService.js";
+
+import {
   generatePayslipsForPayrollRun,
   regeneratePayslip,
   getPayslips,
@@ -108,6 +112,25 @@ function parseInteger(
   }
 
   return parsed;
+}
+
+async function getCurrentEmployee(
+  req,
+) {
+  return resolveEmployeeForUser({
+    organizationId:
+      getOrganizationId(
+        req,
+      ),
+
+    userId:
+      getUserId(
+        req,
+      ),
+
+    email:
+      req.user?.email,
+  });
 }
 
 /* =========================================================
@@ -299,6 +322,121 @@ router.get(
         success: true,
 
         ...result,
+      });
+    } catch (error) {
+      return handleRouteError(
+        res,
+        error,
+      );
+    }
+  },
+);
+
+/* =========================================================
+   CURRENT EMPLOYEE PAYSLIP HISTORY
+========================================================= */
+
+router.get(
+  "/me",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const organizationId =
+        getOrganizationId(
+          req,
+        );
+
+      const employee =
+        await getCurrentEmployee(
+          req,
+        );
+
+      const result =
+        await getEmployeePayslips({
+          organizationId,
+
+          employeeId:
+            employee.id,
+
+          status:
+            "published",
+
+          limit:
+            parseInteger(
+              req.query
+                ?.limit,
+              50,
+            ),
+
+          offset:
+            parseInteger(
+              req.query
+                ?.offset,
+              0,
+            ),
+        });
+
+      return res.json({
+        success: true,
+
+        employee,
+
+        ...result,
+      });
+    } catch (error) {
+      return handleRouteError(
+        res,
+        error,
+      );
+    }
+  },
+);
+
+/* =========================================================
+   CURRENT EMPLOYEE SINGLE PAYSLIP
+========================================================= */
+
+router.get(
+  "/me/:payslipId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const organizationId =
+        getOrganizationId(
+          req,
+        );
+
+      const employee =
+        await getCurrentEmployee(
+          req,
+        );
+
+      const payslip =
+        await getPayslipById({
+          organizationId,
+
+          payslipId:
+            req.params
+              .payslipId,
+        });
+
+      if (
+        payslip.employee_id !==
+          employee.id ||
+        payslip.status !==
+          "published"
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Payslip not found.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        data:
+          payslip,
       });
     } catch (error) {
       return handleRouteError(

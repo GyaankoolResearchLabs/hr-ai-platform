@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
+import {
+  resolveEmployeeForUser,
+} from "../services/employeeIdentityService.js";
 
 import {
   getExpenseEmployee,
@@ -242,6 +245,19 @@ function handleRouteError(
         error?.message ||
         `Unexpected error while ${context}.`,
     });
+}
+
+async function getCurrentEmployee(req) {
+  return resolveEmployeeForUser({
+    organizationId:
+      getOrganizationId(req),
+
+    userId:
+      getUserId(req),
+
+    email:
+      req.user?.email,
+  });
 }
 
 /* =========================================================
@@ -742,6 +758,241 @@ router.get(
         res,
         error,
         "loading employee expense claims",
+      );
+    }
+  },
+);
+
+/* =========================================================
+   CURRENT EMPLOYEE CLAIMS
+========================================================= */
+
+/*
+ * GET /api/expense-claims/me
+ */
+
+router.get(
+  "/me",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      const result =
+        await getEmployeeExpenseClaims({
+          organizationId:
+            getOrganizationId(req),
+
+          employeeId:
+            employee.id,
+
+          status:
+            optional(
+              req.query.status,
+            ),
+
+          page:
+            parsePage(
+              req.query.page,
+            ),
+
+          pageSize:
+            parsePageSize(
+              req.query.pageSize,
+            ),
+        });
+
+      return res.status(200).json({
+        success: true,
+
+        employee,
+
+        claims:
+          result.claims,
+
+        pagination:
+          result.pagination,
+      });
+    } catch (error) {
+      return handleRouteError(
+        res,
+        error,
+        "loading current employee expense claims",
+      );
+    }
+  },
+);
+
+/*
+ * POST /api/expense-claims/me
+ */
+
+router.post(
+  "/me",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      const body =
+        req.body || {};
+
+      const claim =
+        await createExpenseClaim({
+          organizationId:
+            getOrganizationId(req),
+
+          userId:
+            getUserId(req),
+
+          employeeId:
+            employee.id,
+
+          title:
+            body.title,
+
+          description:
+            body.description,
+
+          claimDate:
+            body.claimDate ||
+            body.claim_date,
+
+          currencyCode:
+            body.currencyCode ||
+            body.currency_code ||
+            "INR",
+
+          notes:
+            body.notes,
+
+          items:
+            Array.isArray(
+              body.items,
+            )
+              ? body.items
+              : [],
+        });
+
+      return res.status(201).json({
+        success: true,
+
+        message:
+          "Expense claim created successfully.",
+
+        claim,
+      });
+    } catch (error) {
+      return handleRouteError(
+        res,
+        error,
+        "creating current employee expense claim",
+      );
+    }
+  },
+);
+
+/*
+ * GET /api/expense-claims/me/:claimId
+ */
+
+router.get(
+  "/me/:claimId",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      const claim =
+        await getExpenseClaim({
+          organizationId:
+            getOrganizationId(req),
+
+          claimId:
+            req.params.claimId,
+        });
+
+      if (
+        claim.employee_id !==
+        employee.id
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Expense claim not found.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        claim,
+      });
+    } catch (error) {
+      return handleRouteError(
+        res,
+        error,
+        "loading current employee expense claim",
+      );
+    }
+  },
+);
+
+/*
+ * POST /api/expense-claims/me/:claimId/submit
+ */
+
+router.post(
+  "/me/:claimId/submit",
+  async (req, res) => {
+    try {
+      const employee =
+        await getCurrentEmployee(req);
+
+      const existingClaim =
+        await getExpenseClaim({
+          organizationId:
+            getOrganizationId(req),
+
+          claimId:
+            req.params.claimId,
+        });
+
+      if (
+        existingClaim.employee_id !==
+        employee.id
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Expense claim not found.",
+        });
+      }
+
+      const claim =
+        await submitExpenseClaim({
+          organizationId:
+            getOrganizationId(req),
+
+          userId:
+            getUserId(req),
+
+          claimId:
+            req.params.claimId,
+        });
+
+      return res.status(200).json({
+        success: true,
+
+        message:
+          "Expense claim submitted successfully.",
+
+        claim,
+      });
+    } catch (error) {
+      return handleRouteError(
+        res,
+        error,
+        "submitting current employee expense claim",
       );
     }
   },

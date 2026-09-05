@@ -52,6 +52,12 @@ const STATUS_CONFIG = {
       "bg-blue-50 text-blue-700 border-blue-100",
   },
 
+  submitted: {
+    label: "Submitted",
+    className:
+      "bg-blue-50 text-blue-700 border-blue-100",
+  },
+
   in_progress: {
     label: "In Progress",
     className:
@@ -151,6 +157,15 @@ function getPriorityConfig(priority) {
     PRIORITY_CONFIG[
       normalizePriority(priority)
     ] || PRIORITY_CONFIG.normal
+  );
+}
+
+function isEmployeeEditableStatus(status) {
+  const normalized = normalizeStatus(status);
+
+  return (
+    normalized === "open" ||
+    normalized === "submitted"
   );
 }
 
@@ -584,9 +599,9 @@ export default function EmployeeSelfService() {
 
     const open = requests.filter(
       (request) =>
-        normalizeStatus(
+        isEmployeeEditableStatus(
           request?.status
-        ) === "open"
+        )
     ).length;
 
     const inProgress = requests.filter(
@@ -883,9 +898,9 @@ export default function EmployeeSelfService() {
                   );
 
                 const isOpen =
-                  normalizeStatus(
+                  isEmployeeEditableStatus(
                     request.status
-                  ) === "open";
+                  );
 
                 return (
                   <div
@@ -1478,9 +1493,9 @@ export default function EmployeeSelfService() {
 
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
 
-              {normalizeStatus(
+              {isEmployeeEditableStatus(
                 selectedRequest.status
-              ) === "open" && (
+              ) && (
                 <>
                   <button
                     type="button"

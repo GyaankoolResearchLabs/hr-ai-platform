@@ -1,10 +1,17 @@
 import { NavLink } from "react-router-dom";
-import { LayoutGrid, Sparkles, Users, Settings as SettingsIcon } from "lucide-react";
+import {
+  LayoutGrid,
+  Sparkles,
+  UserRound,
+  Users,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { CATEGORIES } from "../../config/categories";
 import { getIcon } from "../../lib/icons";
 
 const topLinks = [
   { to: "/app/dashboard", label: "Dashboard", Icon: LayoutGrid, end: true },
+  { to: "/app/employee/dashboard", label: "Employee Portal", Icon: UserRound },
   { to: "/app/assistant", label: "AI Assistant", Icon: Sparkles },
   { to: "/app/employees", label: "Employees", Icon: Users },
 ];

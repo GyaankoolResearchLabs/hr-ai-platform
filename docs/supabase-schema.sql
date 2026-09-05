@@ -38,12 +38,17 @@ create table if not exists subscriptions (
 create table if not exists employees (
   id uuid primary key default uuid_generate_v4(),
   organization_id uuid not null references organizations(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
   full_name text not null,
   email text not null,
   department text,
   title text,
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists employees_organization_user_unique
+  on employees (organization_id, user_id)
+  where user_id is not null;
 
 -- Row Level Security -------------------------------------------------------
 -- The Express backend uses the Supabase service role key, which bypasses
