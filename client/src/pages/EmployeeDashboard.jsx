@@ -292,6 +292,7 @@ export default function EmployeeDashboard() {
           title="Payslips"
           value={payslips.length}
           detail="Published payslips only"
+          to="/app/employee/payslips"
         />
 
         <SummaryCard
@@ -378,15 +379,25 @@ function SmallMetric({ label, value }) {
   );
 }
 
-function SummaryCard({ icon: Icon, title, value, detail }) {
-  return (
-    <section className="card p-5">
+function SummaryCard({ icon: Icon, title, value, detail, to }) {
+  const content = (
+    <>
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-ink-900">{title}</h2>
         <Icon className="h-5 w-5 text-brand-700" />
       </div>
       <p className="text-xl font-semibold text-ink-950">{value}</p>
       <p className="mt-2 text-sm text-ink-500">{detail}</p>
-    </section>
+    </>
   );
+
+  if (to) {
+    return (
+      <Link to={to} className="card block p-5 transition hover:border-brand-200">
+        {content}
+      </Link>
+    );
+  }
+
+  return <section className="card p-5">{content}</section>;
 }

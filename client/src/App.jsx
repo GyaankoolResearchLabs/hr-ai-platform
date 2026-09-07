@@ -26,6 +26,7 @@ import Dashboard from "./pages/Dashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeProfile from "./pages/EmployeeProfile";
 import EmployeeAttendanceLeave from "./pages/EmployeeAttendanceLeave";
+import EmployeePayslips from "./pages/EmployeePayslips";
 import CategoryDetail from "./pages/CategoryDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Employees from "./pages/Employees";
@@ -211,6 +212,11 @@ export default function App() {
               <Route
                 path="employee/attendance-leave"
                 element={<EmployeeAttendanceLeave />}
+              />
+
+              <Route
+                path="employee/payslips"
+                element={<EmployeePayslips />}
               />
             </Route>
 
