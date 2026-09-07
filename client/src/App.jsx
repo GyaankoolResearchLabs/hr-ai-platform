@@ -27,6 +27,7 @@ import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeProfile from "./pages/EmployeeProfile";
 import EmployeeAttendanceLeave from "./pages/EmployeeAttendanceLeave";
 import EmployeePayslips from "./pages/EmployeePayslips";
+import EmployeeReimbursements from "./pages/EmployeeReimbursements";
 import CategoryDetail from "./pages/CategoryDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Employees from "./pages/Employees";
@@ -217,6 +218,11 @@ export default function App() {
               <Route
                 path="employee/payslips"
                 element={<EmployeePayslips />}
+              />
+
+              <Route
+                path="employee/reimbursements"
+                element={<EmployeeReimbursements />}
               />
             </Route>
 

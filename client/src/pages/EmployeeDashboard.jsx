@@ -300,6 +300,7 @@ export default function EmployeeDashboard() {
           title="Reimbursements"
           value={formatCurrency(claimSummary.pendingAmount)}
           detail={`${claimSummary.pending} pending, ${claimSummary.paid} paid`}
+          to="/app/employee/reimbursements"
         />
 
         <SummaryCard
