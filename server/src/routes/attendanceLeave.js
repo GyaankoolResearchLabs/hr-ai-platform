@@ -18,6 +18,7 @@ import {
   getEmployeeLeaveRequests,
   createEmployeeLeaveRequest,
 } from "../services/attendanceLeaveService.js";
+import { createNotification } from "../services/notificationService.js";
 
 const router = Router();
 
@@ -105,6 +106,28 @@ function isValidUUID(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     String(value ?? ""),
   );
+}
+
+function formatLeaveDateRange(startDate, endDate) {
+  const formatOne = (value) => {
+    const date = new Date(`${value}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return date.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  if (startDate === endDate) {
+    return formatOne(startDate);
+  }
+
+  return `${formatOne(startDate)} - ${formatOne(endDate)}`;
 }
 
 /* =========================================================
@@ -1794,6 +1817,50 @@ router.put(
             );
           }
         }
+      }
+
+      /*
+       * Notify the employee when their request is approved or
+       * rejected. A notification failure must never fail the
+       * approval/rejection itself — createNotification() already
+       * swallows its own errors and returns null on failure.
+       */
+
+      if (
+        existingRequest.status ===
+          "Pending" &&
+        (status === "Approved" ||
+          status === "Rejected")
+      ) {
+        await createNotification({
+          organizationId:
+            req.organization.id,
+
+          employeeId:
+            existingRequest.employee_id,
+
+          type:
+            status === "Approved"
+              ? "leave_request_approved"
+              : "leave_request_rejected",
+
+          title:
+            status === "Approved"
+              ? `Your ${existingRequest.leave_type} request was approved`
+              : `Your ${existingRequest.leave_type} request was rejected`,
+
+          message:
+            `${formatLeaveDateRange(
+              existingRequest.start_date,
+              existingRequest.end_date,
+            )} (${existingRequest.total_days} day${
+              existingRequest.total_days === 1 ? "" : "s"
+            })${
+              review_comment
+                ? ` — ${cleanOptionalString(review_comment)}`
+                : ""
+            }`,
+        });
       }
 
       return res.json(

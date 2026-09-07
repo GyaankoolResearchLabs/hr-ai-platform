@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import NotificationBell from "../common/NotificationBell";
 
 export default function TopBar() {
   const { organization, subscription, subscriptionActive, user, signOut } = useAuth();
@@ -21,6 +22,7 @@ export default function TopBar() {
       </div>
 
       <div className="flex items-center gap-4">
+        {organization?.role === "employee" && <NotificationBell />}
         <span className="text-sm text-ink-600">{user?.email}</span>
         <button
           onClick={signOut}
