@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -460,9 +460,38 @@ export default function TrainingComplianceTracker() {
   |--------------------------------------------------------------------------
   */
 
+  /*
+   * IMPORTANT — stale-response guard.
+   *
+   * React StrictMode (see main.jsx) intentionally double-invokes
+   * effects in development, so the mount effect below calls
+   * loadData() twice in quick succession. loadData() is also called
+   * directly from the Refresh button.
+   *
+   * Without a guard, two overlapping calls race: whichever
+   * Promise settles LAST wins, in whatever order the network
+   * happens to resolve them — not necessarily the most recent call.
+   * If that last-to-settle call is the earlier (now-stale) one, or
+   * one of a pair of duplicate in-flight requests never resolves,
+   * loading/refreshing can end up permanently stuck true with the
+   * data stuck at its initial (empty) values indefinitely — the
+   * same race already fixed in AttendanceLeaveTracker.jsx's
+   * loadData().
+   *
+   * loadRequestIdRef tracks the most recently STARTED call. Each
+   * call captures its own id and only applies its results — data
+   * and loading/refreshing — if it is still the current one by the
+   * time it settles, so a stale/superseded call can never clobber
+   * fresher state or leave the UI stuck loading.
+   */
+
+  const loadRequestIdRef = useRef(0);
+
   async function loadData(
     showRefresh = false
   ) {
+    const requestId = ++loadRequestIdRef.current;
+
     try {
       if (showRefresh) {
         setRefreshing(true);
@@ -477,6 +506,11 @@ export default function TrainingComplianceTracker() {
         await api.get(
           "/training-compliance"
         );
+
+      if (loadRequestIdRef.current !== requestId) {
+        // A newer loadData() call has started since this one began.
+        return;
+      }
 
       const data =
         response?.data || {};
@@ -513,6 +547,10 @@ export default function TrainingComplianceTracker() {
           : []
       );
     } catch (err) {
+      if (loadRequestIdRef.current !== requestId) {
+        return;
+      }
+
       console.error(
         "[TrainingCompliance] Load failed:",
         err
@@ -525,8 +563,10 @@ export default function TrainingComplianceTracker() {
           "Could not load training compliance data."
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (loadRequestIdRef.current === requestId) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }
 
