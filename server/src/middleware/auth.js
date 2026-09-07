@@ -581,6 +581,297 @@ async function getOrganizationMembership(
 }
 
 /* =========================================================
+   AUTHENTICATE REQUEST
+
+   Shared JWT verification used by every auth middleware.
+
+   Returns either:
+
+     { error: { status, message } }
+     { user: <base req.user without organization context> }
+
+   Organization membership is intentionally NOT checked here so
+   that routes which run before a user has a membership row
+   (invitation acceptance) can reuse the exact same verification.
+========================================================= */
+
+async function authenticateRequest(req) {
+  /* -------------------------------------------------------
+     Bearer token
+  ------------------------------------------------------- */
+
+  const authHeader =
+    req.headers.authorization || "";
+
+  const token =
+    authHeader.startsWith("Bearer ")
+      ? authHeader
+          .slice(7)
+          .trim()
+      : null;
+
+  console.log(
+    "[AUTH] Authorization header:",
+    authHeader
+      ? "PRESENT"
+      : "MISSING"
+  );
+
+  console.log(
+    "[AUTH] Token:",
+    token
+      ? `PRESENT (${token.length} chars)`
+      : "MISSING"
+  );
+
+  if (!token) {
+    return {
+      error: {
+        status: 401,
+        message: "Missing bearer token",
+      },
+    };
+  }
+
+  /* -------------------------------------------------------
+     Decode JWT
+  ------------------------------------------------------- */
+
+  let decoded;
+
+  try {
+    decoded =
+      decodeJwt(token);
+  } catch (error) {
+    console.error(
+      "[AUTH] JWT decoding failed:",
+      error.message
+    );
+
+    return {
+      error: {
+        status: 401,
+        message: "Invalid authentication token",
+      },
+    };
+  }
+
+  const {
+    header,
+    payload,
+  } = decoded;
+
+  /* -------------------------------------------------------
+     Diagnostics
+  ------------------------------------------------------- */
+
+  const now =
+    Math.floor(Date.now() / 1000);
+
+  const exp =
+    Number(payload.exp || 0);
+
+  console.log(
+    "[AUTH] JWT diagnostic:",
+    {
+      sub:
+        payload.sub || null,
+
+      iat:
+        Number(payload.iat || 0),
+
+      exp,
+
+      now,
+
+      secondsRemaining:
+        exp - now,
+
+      iss:
+        payload.iss || null,
+
+      aud:
+        payload.aud || null,
+
+      alg:
+        header.alg || null,
+
+      kid:
+        header.kid || null,
+    }
+  );
+
+  /* -------------------------------------------------------
+     Validate claims
+  ------------------------------------------------------- */
+
+  const claims =
+    validateJwtClaims(payload);
+
+  if (!claims.valid) {
+    console.error(
+      "[AUTH] JWT claim validation failed:",
+      claims.reason
+    );
+
+    return {
+      error: {
+        status: 401,
+        message: "Invalid or expired session",
+      },
+    };
+  }
+
+  /* -------------------------------------------------------
+     Verify signature
+  ------------------------------------------------------- */
+
+  let signatureValid = false;
+
+  try {
+    signatureValid =
+      await verifyJwtSignature(
+        token,
+        decoded
+      );
+  } catch (verificationError) {
+    console.error(
+      "[AUTH] JWT signature verification error:",
+      verificationError
+    );
+
+    return {
+      error: {
+        status: 401,
+        message: "Authentication verification failed",
+      },
+    };
+  }
+
+  if (!signatureValid) {
+    console.error(
+      "[AUTH] JWT signature is invalid."
+    );
+
+    return {
+      error: {
+        status: 401,
+        message: "Invalid authentication token",
+      },
+    };
+  }
+
+  console.log(
+    "[AUTH] JWT signature verified successfully."
+  );
+
+  /* -------------------------------------------------------
+     Build base user
+  ------------------------------------------------------- */
+
+  return {
+    user: {
+      id:
+        payload.sub,
+
+      email:
+        payload.email ||
+        null,
+
+      user_metadata:
+        payload.user_metadata ||
+        {},
+
+      app_metadata:
+        payload.app_metadata ||
+        {},
+
+      aud:
+        payload.aud ||
+        null,
+
+      role:
+        payload.role ||
+        null,
+
+      confirmed_at:
+        payload.confirmed_at ||
+        null,
+
+      created_at:
+        payload.created_at ||
+        null,
+    },
+  };
+}
+
+/* =========================================================
+   REQUIRE AUTH WITHOUT ORGANIZATION
+
+   Verifies the JWT but does NOT require organization
+   membership.
+
+   Used by flows that run before the user belongs to an
+   organization — currently invitation acceptance
+   (POST /api/employee-invitations/accept), which is what
+   creates the organization_members row in the first place.
+
+   req.user.organization_id is always null here. Routes using
+   this middleware must derive the organization from their own
+   trusted source (e.g. the invitation row), never from the
+   request body.
+========================================================= */
+
+export async function requireAuthWithoutOrg(
+  req,
+  res,
+  next
+) {
+  try {
+    const result =
+      await authenticateRequest(req);
+
+    if (result.error) {
+      return res
+        .status(result.error.status)
+        .json({
+          message: result.error.message,
+        });
+    }
+
+    req.user = {
+      ...result.user,
+
+      organization_id: null,
+
+      organization_role: null,
+    };
+
+    console.log(
+      "[AUTH] Authentication successful (no organization required)."
+    );
+
+    console.log(
+      "[AUTH] User ID:",
+      req.user.id
+    );
+
+    next();
+
+  } catch (error) {
+    console.error(
+      "[AUTH] Unexpected authentication error:",
+      error
+    );
+
+    return res.status(401).json({
+      message:
+        "Authentication failed",
+    });
+  }
+}
+
+/* =========================================================
    REQUIRE AUTH
 ========================================================= */
 
@@ -591,170 +882,26 @@ export async function requireAuth(
 ) {
   try {
     /* -------------------------------------------------------
-       Bearer token
+       Verify JWT
     ------------------------------------------------------- */
 
-    const authHeader =
-      req.headers.authorization || "";
+    const result =
+      await authenticateRequest(req);
 
-    const token =
-      authHeader.startsWith("Bearer ")
-        ? authHeader
-            .slice(7)
-            .trim()
-        : null;
-
-    console.log(
-      "[AUTH] Authorization header:",
-      authHeader
-        ? "PRESENT"
-        : "MISSING"
-    );
-
-    console.log(
-      "[AUTH] Token:",
-      token
-        ? `PRESENT (${token.length} chars)`
-        : "MISSING"
-    );
-
-    if (!token) {
-      return res.status(401).json({
-        message:
-          "Missing bearer token",
-      });
+    if (result.error) {
+      return res
+        .status(result.error.status)
+        .json({
+          message: result.error.message,
+        });
     }
-
-    /* -------------------------------------------------------
-       Decode JWT
-    ------------------------------------------------------- */
-
-    let decoded;
-
-    try {
-      decoded =
-        decodeJwt(token);
-    } catch (error) {
-      console.error(
-        "[AUTH] JWT decoding failed:",
-        error.message
-      );
-
-      return res.status(401).json({
-        message:
-          "Invalid authentication token",
-      });
-    }
-
-    const {
-      header,
-      payload,
-    } = decoded;
-
-    /* -------------------------------------------------------
-       Diagnostics
-    ------------------------------------------------------- */
-
-    const now =
-      Math.floor(Date.now() / 1000);
-
-    const exp =
-      Number(payload.exp || 0);
-
-    console.log(
-      "[AUTH] JWT diagnostic:",
-      {
-        sub:
-          payload.sub || null,
-
-        iat:
-          Number(payload.iat || 0),
-
-        exp,
-
-        now,
-
-        secondsRemaining:
-          exp - now,
-
-        iss:
-          payload.iss || null,
-
-        aud:
-          payload.aud || null,
-
-        alg:
-          header.alg || null,
-
-        kid:
-          header.kid || null,
-      }
-    );
-
-    /* -------------------------------------------------------
-       Validate claims
-    ------------------------------------------------------- */
-
-    const claims =
-      validateJwtClaims(payload);
-
-    if (!claims.valid) {
-      console.error(
-        "[AUTH] JWT claim validation failed:",
-        claims.reason
-      );
-
-      return res.status(401).json({
-        message:
-          "Invalid or expired session",
-      });
-    }
-
-    /* -------------------------------------------------------
-       Verify signature
-    ------------------------------------------------------- */
-
-    let signatureValid = false;
-
-    try {
-      signatureValid =
-        await verifyJwtSignature(
-          token,
-          decoded
-        );
-    } catch (verificationError) {
-      console.error(
-        "[AUTH] JWT signature verification error:",
-        verificationError
-      );
-
-      return res.status(401).json({
-        message:
-          "Authentication verification failed",
-      });
-    }
-
-    if (!signatureValid) {
-      console.error(
-        "[AUTH] JWT signature is invalid."
-      );
-
-      return res.status(401).json({
-        message:
-          "Invalid authentication token",
-      });
-    }
-
-    console.log(
-      "[AUTH] JWT signature verified successfully."
-    );
 
     /* -------------------------------------------------------
        Organization membership
     ------------------------------------------------------- */
 
     const userId =
-      payload.sub;
+      result.user.id;
 
     const membership =
       await getOrganizationMembership(
@@ -780,42 +927,13 @@ export async function requireAuth(
     ------------------------------------------------------- */
 
     req.user = {
-      id:
-        userId,
-
-      email:
-        payload.email ||
-        null,
+      ...result.user,
 
       organization_id:
         membership.organization_id,
 
       organization_role:
         membership.role ||
-        null,
-
-      user_metadata:
-        payload.user_metadata ||
-        {},
-
-      app_metadata:
-        payload.app_metadata ||
-        {},
-
-      aud:
-        payload.aud ||
-        null,
-
-      role:
-        payload.role ||
-        null,
-
-      confirmed_at:
-        payload.confirmed_at ||
-        null,
-
-      created_at:
-        payload.created_at ||
         null,
     };
 

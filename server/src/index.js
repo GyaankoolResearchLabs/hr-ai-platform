@@ -28,6 +28,7 @@ import hiringPipelineRouter from "./routes/hiringPipeline.js";
 import hrCasesRoutes from "./routes/hrCases.js";
 import employeeRelationsCasesRouter from "./routes/employeeRelationsCases.js";
 import employeeSelfServiceRouter from "./routes/employeeSelfService.js";
+import employeeInvitationsRouter from "./routes/employeeInvitations.js";
 import onboardingRouter from "./routes/onboarding.js";
 import buddyMentorRouter from "./routes/buddyMentor.js";
 import goalOkrRouter from "./routes/goalOkr.js";
@@ -436,6 +437,15 @@ app.use(
 app.use(
   "/api/employee-self-service",
   employeeSelfServiceRouter,
+);
+
+/* ---------------------------------------------------------
+   EMPLOYEE INVITATIONS
+--------------------------------------------------------- */
+
+app.use(
+  "/api/employee-invitations",
+  employeeInvitationsRouter,
 );
 
 /* ---------------------------------------------------------
