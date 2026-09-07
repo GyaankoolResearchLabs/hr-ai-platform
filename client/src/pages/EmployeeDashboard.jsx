@@ -4,6 +4,7 @@ import {
   BadgeIndianRupee,
   BookOpen,
   CalendarCheck,
+  Files,
   FileText,
   GraduationCap,
   Loader2,
@@ -13,6 +14,7 @@ import {
 
 import api from "../lib/api";
 import employeeLearningService from "../services/employeeLearningService";
+import employeeMyDocumentsService from "../services/employeeMyDocumentsService";
 
 function formatCurrency(value) {
   const number = Number(value || 0);
@@ -49,6 +51,7 @@ export default function EmployeeDashboard() {
   const [attendance, setAttendance] = useState([]);
   const [requests, setRequests] = useState([]);
   const [learningAssignments, setLearningAssignments] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -67,6 +70,7 @@ export default function EmployeeDashboard() {
         attendanceResponse,
         requestResponse,
         learningAssignmentsData,
+        documentsData,
       ] = await Promise.all([
         api.get("/employees/me"),
         api.get("/payroll-runs/me"),
@@ -77,6 +81,7 @@ export default function EmployeeDashboard() {
         api.get("/attendance-leave/me/attendance"),
         api.get("/employee-self-service"),
         employeeLearningService.list(),
+        employeeMyDocumentsService.list(),
       ]);
 
       setProfile(profileResponse.data || null);
@@ -92,6 +97,7 @@ export default function EmployeeDashboard() {
           : [],
       );
       setLearningAssignments(learningAssignmentsData);
+      setDocuments(documentsData);
     } catch (err) {
       console.error("Employee dashboard load error:", err);
 
@@ -330,6 +336,16 @@ export default function EmployeeDashboard() {
           value={learningSummary.assigned}
           detail={`${learningSummary.completed} completed, ${learningSummary.overdue} overdue`}
           to="/app/employee/learning"
+        />
+
+        <SummaryCard
+          icon={Files}
+          title="Documents"
+          value={documents.length}
+          detail={`${countByStatus(documents, "generated")} from HR, ${
+            documents.filter((doc) => doc.source === "uploaded").length
+          } submitted`}
+          to="/app/employee/documents"
         />
       </div>
 

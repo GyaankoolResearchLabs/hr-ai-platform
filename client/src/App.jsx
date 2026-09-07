@@ -29,6 +29,7 @@ import EmployeeAttendanceLeave from "./pages/EmployeeAttendanceLeave";
 import EmployeePayslips from "./pages/EmployeePayslips";
 import EmployeeReimbursements from "./pages/EmployeeReimbursements";
 import EmployeeLearning from "./pages/EmployeeLearning";
+import EmployeeDocuments from "./pages/EmployeeDocuments";
 import CategoryDetail from "./pages/CategoryDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Employees from "./pages/Employees";
@@ -229,6 +230,11 @@ export default function App() {
               <Route
                 path="employee/learning"
                 element={<EmployeeLearning />}
+              />
+
+              <Route
+                path="employee/documents"
+                element={<EmployeeDocuments />}
               />
             </Route>
 
