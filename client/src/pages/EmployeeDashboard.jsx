@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BadgeIndianRupee,
+  BookOpen,
   CalendarCheck,
   FileText,
   GraduationCap,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 import api from "../lib/api";
+import employeeLearningService from "../services/employeeLearningService";
 
 function formatCurrency(value) {
   const number = Number(value || 0);
@@ -46,6 +48,7 @@ export default function EmployeeDashboard() {
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [learningAssignments, setLearningAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -63,6 +66,7 @@ export default function EmployeeDashboard() {
         leaveBalanceResponse,
         attendanceResponse,
         requestResponse,
+        learningAssignmentsData,
       ] = await Promise.all([
         api.get("/employees/me"),
         api.get("/payroll-runs/me"),
@@ -72,6 +76,7 @@ export default function EmployeeDashboard() {
         api.get("/attendance-leave/me/leave/balances"),
         api.get("/attendance-leave/me/attendance"),
         api.get("/employee-self-service"),
+        employeeLearningService.list(),
       ]);
 
       setProfile(profileResponse.data || null);
@@ -86,6 +91,7 @@ export default function EmployeeDashboard() {
           ? requestResponse.data
           : [],
       );
+      setLearningAssignments(learningAssignmentsData);
     } catch (err) {
       console.error("Employee dashboard load error:", err);
 
@@ -147,6 +153,14 @@ export default function EmployeeDashboard() {
       approved: countByStatus(leaveRequests, "approved"),
     };
   }, [leaveBalances, leaveRequests]);
+
+  const learningSummary = useMemo(() => {
+    return {
+      assigned: learningAssignments.length,
+      completed: countByStatus(learningAssignments, "completed"),
+      overdue: countByStatus(learningAssignments, "overdue"),
+    };
+  }, [learningAssignments]);
 
   const claimSummary = useMemo(() => {
     const pending = claims.filter((claim) =>
@@ -308,6 +322,14 @@ export default function EmployeeDashboard() {
           title="Leave"
           value={`${leaveSummary.available}`}
           detail={`${leaveSummary.pending} pending, ${leaveSummary.approved} approved`}
+        />
+
+        <SummaryCard
+          icon={BookOpen}
+          title="Learning"
+          value={learningSummary.assigned}
+          detail={`${learningSummary.completed} completed, ${learningSummary.overdue} overdue`}
+          to="/app/employee/learning"
         />
       </div>
 
