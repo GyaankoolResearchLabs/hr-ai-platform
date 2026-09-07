@@ -6,6 +6,7 @@ import {
 
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import RequireEmployeeRole from "./components/common/RequireEmployeeRole";
 import AppLayout from "./components/layout/AppLayout";
 
 /* =========================================================
@@ -23,6 +24,7 @@ import Signup from "./pages/Signup";
 import OrganizationSetup from "./pages/OrganizationSetup";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
+import EmployeeProfile from "./pages/EmployeeProfile";
 import CategoryDetail from "./pages/CategoryDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Employees from "./pages/Employees";
@@ -189,10 +191,22 @@ export default function App() {
               element={<Dashboard />}
             />
 
-            <Route
-              path="employee/dashboard"
-              element={<EmployeeDashboard />}
-            />
+            {/* =================================================
+                EMPLOYEE PORTAL
+                organization_role 'employee' only
+            ================================================= */}
+
+            <Route element={<RequireEmployeeRole />}>
+              <Route
+                path="employee/dashboard"
+                element={<EmployeeDashboard />}
+              />
+
+              <Route
+                path="employee/profile"
+                element={<EmployeeProfile />}
+              />
+            </Route>
 
             {/* =================================================
                 CATEGORY DETAIL

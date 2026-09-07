@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   BadgeIndianRupee,
   CalendarCheck,
@@ -213,7 +214,7 @@ export default function EmployeeDashboard() {
             <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
               <UserRound className="h-5 w-5" />
             </span>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-base font-semibold text-ink-950">
                 My Profile
               </h2>
@@ -221,6 +222,13 @@ export default function EmployeeDashboard() {
                 Shared employee record
               </p>
             </div>
+
+            <Link
+              to="/app/employee/profile"
+              className="shrink-0 text-sm font-medium text-brand-700 transition hover:text-brand-800"
+            >
+              View full profile &rarr;
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
