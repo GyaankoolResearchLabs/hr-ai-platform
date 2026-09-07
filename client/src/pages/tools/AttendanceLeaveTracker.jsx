@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -246,7 +247,36 @@ export default function AttendanceLeaveTracker() {
      LOAD ALL DATA
   ========================================================= */
 
+  /*
+   * IMPORTANT — stale-response guard.
+   *
+   * React StrictMode (see main.jsx) intentionally double-invokes
+   * effects in development, so the mount effect below calls
+   * loadData() twice in quick succession. loadData() is also called
+   * directly after every save (attendance, leave request, balance,
+   * approval/rejection).
+   *
+   * Without a guard, two overlapping calls race: whichever
+   * Promise.all settles LAST wins, in whatever order the network
+   * happens to resolve them — not necessarily the most recent call.
+   * If that last-to-settle call is the earlier (now-stale) one, or
+   * if one of a pair of duplicate in-flight requests to the same
+   * endpoint never resolves, `loading` can end up permanently stuck
+   * `true` with counts stuck at their initial (zero) values, even
+   * though the newer call's data already arrived successfully.
+   *
+   * loadRequestIdRef tracks the most recently STARTED call. Each
+   * call captures its own id and only applies its results (data and
+   * loading) if it is still the current one by the time it settles,
+   * so a stale/superseded call can never clobber a newer one or get
+   * stuck holding `loading` at true.
+   */
+
+  const loadRequestIdRef = useRef(0);
+
   async function loadData() {
+    const requestId = ++loadRequestIdRef.current;
+
     try {
       setLoading(true);
       setError("");
@@ -272,6 +302,11 @@ export default function AttendanceLeaveTracker() {
 
         attendanceLeaveService.getLeaveRequests(),
       ]);
+
+      if (loadRequestIdRef.current !== requestId) {
+        // A newer loadData() call has started since this one began.
+        return;
+      }
 
       setEmployees(
         Array.isArray(employeeData)
@@ -299,6 +334,10 @@ export default function AttendanceLeaveTracker() {
           : []
       );
     } catch (err) {
+      if (loadRequestIdRef.current !== requestId) {
+        return;
+      }
+
       console.error(
         "Attendance & Leave load error:",
         err
@@ -310,7 +349,9 @@ export default function AttendanceLeaveTracker() {
           "Could not load Attendance & Leave data."
       );
     } finally {
-      setLoading(false);
+      if (loadRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }
 
