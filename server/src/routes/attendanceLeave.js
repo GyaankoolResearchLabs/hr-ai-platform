@@ -8,6 +8,16 @@ import { getOrganizationForUser } from "../services/organizationLookup.js";
 import {
   resolveEmployeeForUser,
 } from "../services/employeeIdentityService.js";
+import {
+  cleanString,
+  cleanOptionalString,
+  isValidDate,
+  calculateLeaveDays,
+  getEmployeeAttendance,
+  getEmployeeLeaveBalances,
+  getEmployeeLeaveRequests,
+  createEmployeeLeaveRequest,
+} from "../services/attendanceLeaveService.js";
 
 const router = Router();
 
@@ -81,28 +91,6 @@ const LEAVE_STATUSES = [
    HELPERS
 ========================================================= */
 
-function cleanString(value) {
-  return String(value ?? "").trim();
-}
-
-function cleanOptionalString(value) {
-  const cleaned = cleanString(value);
-
-  return cleaned || null;
-}
-
-function isValidDate(value) {
-  if (!value) {
-    return false;
-  }
-
-  const date = new Date(value);
-
-  return !Number.isNaN(
-    date.getTime(),
-  );
-}
-
 function isValidTime(value) {
   if (!value) {
     return true;
@@ -110,37 +98,6 @@ function isValidTime(value) {
 
   return /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/.test(
     value,
-  );
-}
-
-function calculateLeaveDays(
-  startDate,
-  endDate,
-) {
-  const start = new Date(
-    `${startDate}T00:00:00`,
-  );
-
-  const end = new Date(
-    `${endDate}T00:00:00`,
-  );
-
-  if (
-    Number.isNaN(start.getTime()) ||
-    Number.isNaN(end.getTime())
-  ) {
-    return 0;
-  }
-
-  const difference =
-    end.getTime() -
-    start.getTime();
-
-  return (
-    Math.floor(
-      difference /
-        (1000 * 60 * 60 * 24),
-    ) + 1
   );
 }
 
@@ -224,50 +181,24 @@ router.get(
       const employee =
         await getCurrentEmployee(req);
 
-      let query =
-        supabaseAdmin
-          .from("attendance_records")
-          .select("*")
-          .eq(
-            "organization_id",
+      const attendance =
+        await getEmployeeAttendance({
+          organizationId:
             req.organization.id,
-          )
-          .eq(
-            "employee_id",
+
+          employeeId:
             employee.id,
-          )
-          .order(
-            "attendance_date",
-            {
-              ascending: false,
-            },
-          );
 
-      if (req.query.from_date) {
-        query = query.gte(
-          "attendance_date",
-          req.query.from_date,
-        );
-      }
+          fromDate:
+            req.query.from_date || null,
 
-      if (req.query.to_date) {
-        query = query.lte(
-          "attendance_date",
-          req.query.to_date,
-        );
-      }
-
-      const { data, error } =
-        await query;
-
-      if (error) {
-        throw error;
-      }
+          toDate:
+            req.query.to_date || null,
+        });
 
       return res.json({
         employee,
-        attendance:
-          data || [],
+        attendance,
       });
     } catch (error) {
       console.error(
@@ -293,33 +224,18 @@ router.get(
       const employee =
         await getCurrentEmployee(req);
 
-      const { data, error } =
-        await supabaseAdmin
-          .from("leave_balances")
-          .select("*")
-          .eq(
-            "organization_id",
+      const balances =
+        await getEmployeeLeaveBalances({
+          organizationId:
             req.organization.id,
-          )
-          .eq(
-            "employee_id",
-            employee.id,
-          )
-          .order(
-            "leave_type",
-            {
-              ascending: true,
-            },
-          );
 
-      if (error) {
-        throw error;
-      }
+          employeeId:
+            employee.id,
+        });
 
       return res.json({
         employee,
-        balances:
-          data || [],
+        balances,
       });
     } catch (error) {
       console.error(
@@ -345,43 +261,21 @@ router.get(
       const employee =
         await getCurrentEmployee(req);
 
-      let query =
-        supabaseAdmin
-          .from("leave_requests")
-          .select("*")
-          .eq(
-            "organization_id",
+      const requests =
+        await getEmployeeLeaveRequests({
+          organizationId:
             req.organization.id,
-          )
-          .eq(
-            "employee_id",
+
+          employeeId:
             employee.id,
-          )
-          .order(
-            "created_at",
-            {
-              ascending: false,
-            },
-          );
 
-      if (req.query.status) {
-        query = query.eq(
-          "status",
-          req.query.status,
-        );
-      }
-
-      const { data, error } =
-        await query;
-
-      if (error) {
-        throw error;
-      }
+          status:
+            req.query.status || null,
+        });
 
       return res.json({
         employee,
-        requests:
-          data || [],
+        requests,
       });
     } catch (error) {
       console.error(
@@ -414,157 +308,25 @@ router.post(
         reason,
       } = req.body || {};
 
-      if (!leave_type) {
-        return res.status(400).json({
-          message:
-            "Leave type is required",
-        });
-      }
+      const data =
+        await createEmployeeLeaveRequest({
+          organizationId:
+            req.organization.id,
 
-      if (!start_date) {
-        return res.status(400).json({
-          message:
-            "Start date is required",
-        });
-      }
+          employeeId:
+            employee.id,
 
-      if (!end_date) {
-        return res.status(400).json({
-          message:
-            "End date is required",
-        });
-      }
+          leaveType:
+            leave_type,
 
-      if (
-        !isValidDate(start_date) ||
-        !isValidDate(end_date)
-      ) {
-        return res.status(400).json({
-          message:
-            "Invalid leave dates",
-        });
-      }
-
-      if (
-        new Date(start_date) >
-        new Date(end_date)
-      ) {
-        return res.status(400).json({
-          message:
-            "End date cannot be before start date",
-        });
-      }
-
-      const totalDays =
-        calculateLeaveDays(
-          start_date,
-          end_date,
-        );
-
-      if (totalDays <= 0) {
-        return res.status(400).json({
-          message:
-            "Leave duration must be at least one day",
-        });
-      }
-
-      const {
-        data: overlappingRequests,
-        error:
-          overlapError,
-      } = await supabaseAdmin
-        .from("leave_requests")
-        .select(
-          "id, start_date, end_date, status",
-        )
-        .eq(
-          "organization_id",
-          req.organization.id,
-        )
-        .eq(
-          "employee_id",
-          employee.id,
-        )
-        .in(
-          "status",
-          [
-            "Pending",
-            "Approved",
-          ],
-        )
-        .lte(
-          "start_date",
-          end_date,
-        )
-        .gte(
-          "end_date",
-          start_date,
-        );
-
-      if (overlapError) {
-        throw overlapError;
-      }
-
-      if (
-        overlappingRequests &&
-        overlappingRequests.length > 0
-      ) {
-        return res.status(409).json({
-          message:
-            "You already have an overlapping leave request",
-          requests:
-            overlappingRequests,
-        });
-      }
-
-      const { data, error } =
-        await supabaseAdmin
-          .from("leave_requests")
-          .insert({
-            organization_id:
-              req.organization.id,
-
-            employee_id:
-              employee.id,
-
-            leave_type:
-              cleanString(
-                leave_type,
-              ),
-
+          startDate:
             start_date,
 
+          endDate:
             end_date,
 
-            total_days:
-              totalDays,
-
-            reason:
-              cleanOptionalString(
-                reason,
-              ),
-
-            status:
-              "Pending",
-          })
-          .select(
-            `
-              *,
-              employees (
-                id,
-                full_name,
-                email,
-                department,
-                title,
-                employee_code
-              )
-            `,
-          )
-          .single();
-
-      if (error) {
-        throw error;
-      }
+          reason,
+        });
 
       return res.status(201).json(data);
     } catch (error) {
@@ -579,6 +341,10 @@ router.post(
         message:
           error.message ||
           "Could not create leave request",
+
+        ...(error.requests
+          ? { requests: error.requests }
+          : {}),
       });
     }
   },

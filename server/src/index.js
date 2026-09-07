@@ -30,6 +30,7 @@ import employeeRelationsCasesRouter from "./routes/employeeRelationsCases.js";
 import employeeSelfServiceRouter from "./routes/employeeSelfService.js";
 import employeeInvitationsRouter from "./routes/employeeInvitations.js";
 import employeeProfileRouter from "./routes/employeeProfile.js";
+import employeeAttendanceLeaveRouter from "./routes/employeeAttendanceLeave.js";
 import onboardingRouter from "./routes/onboarding.js";
 import buddyMentorRouter from "./routes/buddyMentor.js";
 import goalOkrRouter from "./routes/goalOkr.js";
@@ -456,6 +457,15 @@ app.use(
 app.use(
   "/api/employee/profile",
   employeeProfileRouter,
+);
+
+/* ---------------------------------------------------------
+   EMPLOYEE ATTENDANCE & LEAVE
+--------------------------------------------------------- */
+
+app.use(
+  "/api/employee",
+  employeeAttendanceLeaveRouter,
 );
 
 /* ---------------------------------------------------------

@@ -246,7 +246,7 @@ export default function EmployeeDashboard() {
             <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
               <CalendarCheck className="h-5 w-5" />
             </span>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-base font-semibold text-ink-950">
                 Attendance
               </h2>
@@ -254,6 +254,13 @@ export default function EmployeeDashboard() {
                 Latest loaded records
               </p>
             </div>
+
+            <Link
+              to="/app/employee/attendance-leave"
+              className="shrink-0 text-sm font-medium text-brand-700 transition hover:text-brand-800"
+            >
+              View details &rarr;
+            </Link>
           </div>
 
           <Metric label="Attendance rate" value={`${attendanceSummary.percentage}%`} />
