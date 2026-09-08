@@ -37,6 +37,7 @@ import employeeLearningRouter from "./routes/employeeLearning.js";
 import employeeMyDocumentsRouter from "./routes/employeeMyDocuments.js";
 import employeeNotificationsRouter from "./routes/employeeNotifications.js";
 import employeePerformanceRouter from "./routes/employeePerformance.js";
+import employeeFnfRouter from "./routes/employeeFnf.js";
 import onboardingRouter from "./routes/onboarding.js";
 import buddyMentorRouter from "./routes/buddyMentor.js";
 import goalOkrRouter from "./routes/goalOkr.js";
@@ -526,6 +527,15 @@ app.use(
 app.use(
   "/api/employee/performance",
   employeePerformanceRouter,
+);
+
+/* ---------------------------------------------------------
+   EMPLOYEE FULL & FINAL SETTLEMENT
+--------------------------------------------------------- */
+
+app.use(
+  "/api/employee/fnf",
+  employeeFnfRouter,
 );
 
 /* ---------------------------------------------------------

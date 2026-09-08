@@ -31,6 +31,7 @@ import EmployeeReimbursements from "./pages/EmployeeReimbursements";
 import EmployeeLearning from "./pages/EmployeeLearning";
 import EmployeeDocuments from "./pages/EmployeeDocuments";
 import EmployeePerformance from "./pages/EmployeePerformance";
+import EmployeeFnf from "./pages/EmployeeFnf";
 import CategoryDetail from "./pages/CategoryDetail";
 import AIAssistant from "./pages/AIAssistant";
 import Employees from "./pages/Employees";
@@ -241,6 +242,11 @@ export default function App() {
               <Route
                 path="employee/performance"
                 element={<EmployeePerformance />}
+              />
+
+              <Route
+                path="employee/fnf"
+                element={<EmployeeFnf />}
               />
             </Route>
 

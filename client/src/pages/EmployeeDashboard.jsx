@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BadgeIndianRupee,
+  Banknote,
   BookOpen,
   CalendarCheck,
   Files,
@@ -17,6 +18,7 @@ import api from "../lib/api";
 import employeeLearningService from "../services/employeeLearningService";
 import employeeMyDocumentsService from "../services/employeeMyDocumentsService";
 import employeePerformanceService from "../services/employeePerformanceService";
+import employeeFnfService from "../services/employeeFnfService";
 
 function formatCurrency(value) {
   const number = Number(value || 0);
@@ -55,6 +57,7 @@ export default function EmployeeDashboard() {
   const [learningAssignments, setLearningAssignments] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [goals, setGoals] = useState([]);
+  const [fnfSettlements, setFnfSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -75,6 +78,7 @@ export default function EmployeeDashboard() {
         learningAssignmentsData,
         documentsData,
         goalsData,
+        fnfData,
       ] = await Promise.all([
         api.get("/employees/me"),
         api.get("/payroll-runs/me"),
@@ -87,6 +91,7 @@ export default function EmployeeDashboard() {
         employeeLearningService.list(),
         employeeMyDocumentsService.list(),
         employeePerformanceService.listGoals(),
+        employeeFnfService.list(),
       ]);
 
       setProfile(profileResponse.data || null);
@@ -104,6 +109,7 @@ export default function EmployeeDashboard() {
       setLearningAssignments(learningAssignmentsData);
       setDocuments(documentsData);
       setGoals(goalsData);
+      setFnfSettlements(fnfData);
     } catch (err) {
       console.error("Employee dashboard load error:", err);
 
@@ -369,6 +375,22 @@ export default function EmployeeDashboard() {
           detail={`${goalsSummary.completed} completed, ${goalsSummary.inProgress} in progress`}
           to="/app/employee/performance"
         />
+
+        {/*
+          Full & Final Settlement only applies once an employee has a
+          finalized settlement record — most active employees never
+          will. Render the card only when the list is non-empty rather
+          than always showing an empty/zero state.
+        */}
+        {fnfSettlements.length > 0 && (
+          <SummaryCard
+            icon={Banknote}
+            title="Full & Final Settlement"
+            value={fnfSettlements.length}
+            detail="View your finalized settlement"
+            to="/app/employee/fnf"
+          />
+        )}
       </div>
 
       <section className="mt-6 card overflow-hidden">
