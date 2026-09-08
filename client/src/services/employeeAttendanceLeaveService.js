@@ -17,6 +17,26 @@ export const employeeAttendanceLeaveService = {
   },
 
   /* =========================================================
+     CLOCK IN
+  ========================================================= */
+
+  async clockIn() {
+    const { data } = await api.post("/employee/attendance/clock-in");
+
+    return data?.attendance || null;
+  },
+
+  /* =========================================================
+     CLOCK OUT
+  ========================================================= */
+
+  async clockOut() {
+    const { data } = await api.post("/employee/attendance/clock-out");
+
+    return data?.attendance || null;
+  },
+
+  /* =========================================================
      LEAVE BALANCE
   ========================================================= */
 

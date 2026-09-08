@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarCheck,
+  CheckCircle2,
   Clock3,
+  LogIn,
+  LogOut,
   Loader2,
   Send,
 } from "lucide-react";
@@ -52,6 +55,26 @@ function getLeaveStatusClass(status) {
   }
 }
 
+function formatTime(value) {
+  if (!value) {
+    return "-";
+  }
+
+  const [hours, minutes] = value.split(":");
+  const date = new Date();
+  date.setHours(Number(hours), Number(minutes), 0, 0);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleTimeString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function getAttendanceStatusClass(status) {
   switch (status) {
     case "Present":
@@ -90,6 +113,9 @@ export default function EmployeeAttendanceLeave() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+
+  const [clocking, setClocking] = useState(false);
+  const [clockError, setClockError] = useState("");
 
   async function loadData() {
     try {
@@ -138,6 +164,58 @@ export default function EmployeeAttendanceLeave() {
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function applyTodayRecord(record) {
+    setToday(record);
+
+    setAttendance((current) => {
+      const withoutToday = current.filter(
+        (item) => item.attendance_date !== record.attendance_date,
+      );
+
+      return [record, ...withoutToday];
+    });
+  }
+
+  async function handleClockIn() {
+    setClockError("");
+
+    try {
+      setClocking(true);
+
+      const record = await employeeAttendanceLeaveService.clockIn();
+
+      applyTodayRecord(record);
+    } catch (err) {
+      console.error("Clock in error:", err);
+
+      setClockError(
+        err?.response?.data?.message || "Unable to clock in.",
+      );
+    } finally {
+      setClocking(false);
+    }
+  }
+
+  async function handleClockOut() {
+    setClockError("");
+
+    try {
+      setClocking(true);
+
+      const record = await employeeAttendanceLeaveService.clockOut();
+
+      applyTodayRecord(record);
+    } catch (err) {
+      console.error("Clock out error:", err);
+
+      setClockError(
+        err?.response?.data?.message || "Unable to clock out.",
+      );
+    } finally {
+      setClocking(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -302,9 +380,83 @@ export default function EmployeeAttendanceLeave() {
               <p className="text-sm text-ink-500">
                 {today
                   ? `Today: ${today.status}`
-                  : "No attendance marked for today yet"}
+                  : "Not clocked in yet today"}
               </p>
             </div>
+          </div>
+
+          <div className="border-b border-ink-100 px-5 py-4">
+            {clockError && (
+              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {clockError}
+              </div>
+            )}
+
+            {!today && (
+              <button
+                type="button"
+                onClick={handleClockIn}
+                disabled={clocking}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-800 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-900 disabled:opacity-60"
+              >
+                {clocking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogIn className="h-4 w-4" />
+                )}
+                Clock In
+              </button>
+            )}
+
+            {today && today.check_in && !today.check_out && (
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-sm text-ink-600">
+                  Clocked in at{" "}
+                  <span className="font-medium text-ink-900">
+                    {formatTime(today.check_in)}
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  onClick={handleClockOut}
+                  disabled={clocking}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-800 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-900 disabled:opacity-60"
+                >
+                  {clocking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogOut className="h-4 w-4" />
+                  )}
+                  Clock Out
+                </button>
+              </div>
+            )}
+
+            {today && today.check_in && today.check_out && (
+              <div className="flex items-center gap-2 text-sm text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>
+                  Clocked in at{" "}
+                  <span className="font-medium">
+                    {formatTime(today.check_in)}
+                  </span>{" "}
+                  &middot; Clocked out at{" "}
+                  <span className="font-medium">
+                    {formatTime(today.check_out)}
+                  </span>
+                </span>
+              </div>
+            )}
+
+            {today && !today.check_in && (
+              <p className="text-sm text-ink-500">
+                Today's attendance was already marked by HR as{" "}
+                <span className="font-medium text-ink-900">
+                  {today.status}
+                </span>
+                .
+              </p>
+            )}
           </div>
 
           {attendance.length === 0 ? (
