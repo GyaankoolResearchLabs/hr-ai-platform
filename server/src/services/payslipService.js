@@ -33,6 +33,21 @@ function formatPayrollMonth(value) {
   });
 }
 
+/*
+ * Matches EmployeePayslips.jsx's formatCurrency() exactly, so the
+ * amount in the notification reads identically to the amount the
+ * employee sees on the Payslips page itself.
+ */
+function formatCurrency(value) {
+  const number = Number(value || 0);
+
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(number);
+}
+
 function toNumber(value, fallback = 0) {
   if (
     value === null ||
@@ -2018,7 +2033,7 @@ export async function publishPayslip({
     employeeId: data.employee_id,
     type: "payslip_published",
     title: "Your payslip is now available",
-    message: `Payslip for ${formatPayrollMonth(data.payroll_month)} has been published.`,
+    message: `Payslip for ${formatPayrollMonth(data.payroll_month)} has been published. Net pay: ${formatCurrency(data.net_pay)}.`,
   });
 
   return data;
@@ -2091,7 +2106,7 @@ export async function publishPayslips({
         employeeId: payslip.employee_id,
         type: "payslip_published",
         title: "Your payslip is now available",
-        message: `Payslip for ${formatPayrollMonth(payslip.payroll_month)} has been published.`,
+        message: `Payslip for ${formatPayrollMonth(payslip.payroll_month)} has been published. Net pay: ${formatCurrency(payslip.net_pay)}.`,
       })
     )
   );
