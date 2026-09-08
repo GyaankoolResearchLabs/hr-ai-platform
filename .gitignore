@@ -6,3 +6,4 @@ build/
 *.log
 npm-debug.log*
 .vite/
+server/test/.fixture-context.json
