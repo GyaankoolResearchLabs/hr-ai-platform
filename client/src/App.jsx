@@ -7,6 +7,7 @@ import {
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import RequireEmployeeRole from "./components/common/RequireEmployeeRole";
+import RequireHRRole from "./components/common/RequireHRRole";
 import AppLayout from "./components/layout/AppLayout";
 
 /* =========================================================
@@ -190,15 +191,6 @@ export default function App() {
             />
 
             {/* =================================================
-                DASHBOARD
-            ================================================= */}
-
-            <Route
-              path="dashboard"
-              element={<Dashboard />}
-            />
-
-            {/* =================================================
                 EMPLOYEE PORTAL
                 organization_role 'employee' only
             ================================================= */}
@@ -249,6 +241,25 @@ export default function App() {
                 element={<EmployeeFnf />}
               />
             </Route>
+
+            {/* =================================================
+                HR-FACING ROUTES
+                Every route below is HR/owner/admin only — blocked
+                (redirected to the Employee Portal), not just hidden,
+                for organization_role 'employee'. Mirrors
+                RequireEmployeeRole's guard in the other direction.
+            ================================================= */}
+
+            <Route element={<RequireHRRole />}>
+
+            {/* =================================================
+                DASHBOARD
+            ================================================= */}
+
+            <Route
+              path="dashboard"
+              element={<Dashboard />}
+            />
 
             {/* =================================================
                 CATEGORY DETAIL
@@ -587,6 +598,8 @@ export default function App() {
               path="tools/workforce-metrics"
               element={<WorkforceMetrics />}
             />
+
+            </Route>
 
           </Route>
         </Route>
