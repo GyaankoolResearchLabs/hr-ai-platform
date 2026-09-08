@@ -193,6 +193,27 @@ async function getCurrentEmployee(req) {
   });
 }
 
+/*
+ * HR-side users are every member whose role is not 'employee' —
+ * same convention as routes/employeeInvitations.js's isHrUser().
+ *
+ * Every write below that acts on an arbitrary employee_id supplied
+ * in the request body (marking someone else's attendance, setting
+ * someone else's leave balance, creating or approving/rejecting a
+ * leave request on someone else's behalf) is HR-only and must use
+ * this — never the genuinely self-service writes (POST
+ * /me/leave/requests), which already derive the employee from the
+ * verified JWT via getCurrentEmployee() and take no employee_id
+ * from the client at all.
+ */
+function isHrUser(req) {
+  return (
+    String(req.user?.organization_role ?? "")
+      .trim()
+      .toLowerCase() !== "employee"
+  );
+}
+
 /* =========================================================
    CURRENT EMPLOYEE SELF-SERVICE
 ========================================================= */
@@ -526,6 +547,13 @@ router.post(
   "/attendance",
   async (req, res) => {
     try {
+      if (!isHrUser(req)) {
+        return res.status(403).json({
+          message:
+            "Only HR users can mark attendance.",
+        });
+      }
+
       const {
         employee_id,
         attendance_date,
@@ -954,6 +982,13 @@ router.post(
   "/balances",
   async (req, res) => {
     try {
+      if (!isHrUser(req)) {
+        return res.status(403).json({
+          message:
+            "Only HR users can set leave balances.",
+        });
+      }
+
       const {
         employee_id,
         leave_type,
@@ -1274,6 +1309,13 @@ router.post(
   "/requests",
   async (req, res) => {
     try {
+      if (!isHrUser(req)) {
+        return res.status(403).json({
+          message:
+            "Only HR users can create a leave request on another employee's behalf.",
+        });
+      }
+
       const {
         employee_id,
         leave_type,
@@ -1510,6 +1552,13 @@ router.put(
   "/requests/:id",
   async (req, res) => {
     try {
+      if (!isHrUser(req)) {
+        return res.status(403).json({
+          message:
+            "Only HR users can approve, reject, or cancel a leave request.",
+        });
+      }
+
       const requestId =
         req.params.id;
 
