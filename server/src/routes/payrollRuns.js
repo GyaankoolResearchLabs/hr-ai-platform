@@ -1,10 +1,8 @@
 import express from "express";
 
 import { requireAuth } from "../middleware/auth.js";
+import { resolveEmployee as requireEmployee } from "../middleware/resolveEmployee.js";
 import { supabaseAdmin } from "../config/supabase.js";
-import {
-  resolveEmployeeForUser,
-} from "../services/employeeIdentityService.js";
 
 import {
   createPayrollRun,
@@ -64,19 +62,6 @@ function handleError(res, error, fallbackMessage) {
   });
 }
 
-async function getCurrentEmployee(req) {
-  return resolveEmployeeForUser({
-    organizationId:
-      getOrganizationId(req),
-
-    userId:
-      getUserId(req),
-
-    email:
-      req.user?.email,
-  });
-}
-
 /* =========================================================
    GET ALL PAYROLL RUNS
    GET /api/payroll-runs
@@ -116,7 +101,7 @@ router.get("/", async (req, res) => {
    GET /api/payroll-runs/me
 ========================================================= */
 
-router.get("/me", async (req, res) => {
+router.get("/me", requireEmployee, async (req, res) => {
   try {
     const organizationId =
       getOrganizationId(req);
@@ -129,7 +114,7 @@ router.get("/me", async (req, res) => {
     }
 
     const employee =
-      await getCurrentEmployee(req);
+      req.employee;
 
     const limit =
       Math.min(

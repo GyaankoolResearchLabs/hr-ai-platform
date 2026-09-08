@@ -5,13 +5,13 @@ import {
 } from "../middleware/auth.js";
 
 import {
+  resolveEmployee as requireEmployee,
+} from "../middleware/resolveEmployee.js";
+
+import {
   getOrganizationIdFromRequest,
   getUserIdFromRequest,
 } from "../utils/requestContext.js";
-
-import {
-  resolveEmployeeForUser,
-} from "../services/employeeIdentityService.js";
 
 import {
   generatePayslipsForPayrollRun,
@@ -112,25 +112,6 @@ function parseInteger(
   }
 
   return parsed;
-}
-
-async function getCurrentEmployee(
-  req,
-) {
-  return resolveEmployeeForUser({
-    organizationId:
-      getOrganizationId(
-        req,
-      ),
-
-    userId:
-      getUserId(
-        req,
-      ),
-
-    email:
-      req.user?.email,
-  });
 }
 
 /* =========================================================
@@ -339,6 +320,7 @@ router.get(
 router.get(
   "/me",
   requireAuth,
+  requireEmployee,
   async (req, res) => {
     try {
       const organizationId =
@@ -347,9 +329,7 @@ router.get(
         );
 
       const employee =
-        await getCurrentEmployee(
-          req,
-        );
+        req.employee;
 
       const result =
         await getEmployeePayslips({
@@ -399,6 +379,7 @@ router.get(
 router.get(
   "/me/:payslipId",
   requireAuth,
+  requireEmployee,
   async (req, res) => {
     try {
       const organizationId =
@@ -407,9 +388,7 @@ router.get(
         );
 
       const employee =
-        await getCurrentEmployee(
-          req,
-        );
+        req.employee;
 
       const payslip =
         await getPayslipById({

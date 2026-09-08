@@ -1,9 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { resolveEmployee as requireEmployee } from "../middleware/resolveEmployee.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
-import {
-  resolveEmployeeForUser,
-} from "../services/employeeIdentityService.js";
 
 import {
   getExpenseEmployee,
@@ -245,19 +243,6 @@ function handleRouteError(
         error?.message ||
         `Unexpected error while ${context}.`,
     });
-}
-
-async function getCurrentEmployee(req) {
-  return resolveEmployeeForUser({
-    organizationId:
-      getOrganizationId(req),
-
-    userId:
-      getUserId(req),
-
-    email:
-      req.user?.email,
-  });
 }
 
 /* =========================================================
@@ -773,10 +758,11 @@ router.get(
 
 router.get(
   "/me",
+  requireEmployee,
   async (req, res) => {
     try {
       const employee =
-        await getCurrentEmployee(req);
+        req.employee;
 
       const result =
         await getEmployeeExpenseClaims({
@@ -829,10 +815,11 @@ router.get(
 
 router.post(
   "/me",
+  requireEmployee,
   async (req, res) => {
     try {
       const employee =
-        await getCurrentEmployee(req);
+        req.employee;
 
       const body =
         req.body || {};
@@ -898,10 +885,11 @@ router.post(
 
 router.get(
   "/me/:claimId",
+  requireEmployee,
   async (req, res) => {
     try {
       const employee =
-        await getCurrentEmployee(req);
+        req.employee;
 
       const claim =
         await getExpenseClaim({
@@ -943,10 +931,11 @@ router.get(
 
 router.post(
   "/me/:claimId/submit",
+  requireEmployee,
   async (req, res) => {
     try {
       const employee =
-        await getCurrentEmployee(req);
+        req.employee;
 
       const existingClaim =
         await getExpenseClaim({
