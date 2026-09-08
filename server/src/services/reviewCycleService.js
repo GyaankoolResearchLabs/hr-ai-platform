@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabase.js";
+import { createNotification } from "./notificationService.js";
 
 /* =========================================================
    HELPERS
@@ -1015,7 +1016,7 @@ export async function updateEmployeeReview(
       "performance_review_cycles",
     )
     .select(
-      "id, status",
+      "id, title, status",
     )
     .eq(
       "organization_id",
@@ -1347,6 +1348,34 @@ export async function updateEmployeeReview(
     );
 
     throw updateError;
+  }
+
+  /*
+   * Notify the employee once their review reaches "submitted" — the
+   * point at which rating/comments first become visible to them
+   * (see routes/employeePerformance.js's REVIEW_VISIBLE_STATUSES).
+   * Only fire on the actual transition into "submitted", not on every
+   * save while already submitted. Notification failure must never
+   * fail the review update itself — createNotification() already
+   * swallows its own errors.
+   */
+  if (
+    cleanUpdates.status ===
+      "submitted" &&
+    existingReview.status !==
+      "submitted"
+  ) {
+    await createNotification({
+      organizationId,
+      employeeId:
+        updatedReview.employee_id,
+      type:
+        "performance_review_submitted",
+      title:
+        "Your performance review is ready",
+      message:
+        `${cycle.title || "Your performance review"} is ready for you to view.`,
+    });
   }
 
   /*

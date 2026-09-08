@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "../config/supabase.js";
+import { createNotification } from "./notificationService.js";
 
 /* =========================================================
    HELPERS
@@ -2296,6 +2297,23 @@ export async function approveExpenseClaim({
       userId,
   });
 
+  /*
+   * Notification failure must never fail the approval itself —
+   * createNotification() already swallows its own errors.
+   */
+  await createNotification({
+    organizationId,
+    employeeId: data.employee_id,
+    type: "expense_claim_approved",
+    title:
+      amount < claimTotal
+        ? "Your expense claim was partially approved"
+        : "Your expense claim was approved",
+    message: `${data.claim_number || "Claim"} — approved amount ${amount}${
+      comments ? ` — ${String(comments).trim()}` : ""
+    }`,
+  });
+
   return await getExpenseClaim({
     organizationId,
     claimId,
@@ -2448,6 +2466,18 @@ export async function rejectExpenseClaim({
 
     performedBy:
       userId,
+  });
+
+  /*
+   * Notification failure must never fail the rejection itself —
+   * createNotification() already swallows its own errors.
+   */
+  await createNotification({
+    organizationId,
+    employeeId: data.employee_id,
+    type: "expense_claim_rejected",
+    title: "Your expense claim was rejected",
+    message: `${data.claim_number || "Claim"} — ${normalizedReason}`,
   });
 
   return await getExpenseClaim({

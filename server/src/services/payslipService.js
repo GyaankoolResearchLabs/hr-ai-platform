@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "../config/supabase.js";
+import { createNotification } from "./notificationService.js";
 
 /* =========================================================
    PAYSLIP SERVICE
@@ -13,6 +14,23 @@ function createServiceError(message, status = 500) {
   const error = new Error(message);
   error.status = status;
   return error;
+}
+
+function formatPayrollMonth(value) {
+  if (!value) {
+    return "this period";
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function toNumber(value, fallback = 0) {
@@ -1991,6 +2009,18 @@ export async function publishPayslip({
     throw error;
   }
 
+  /*
+   * Notification failure must never fail the publish itself —
+   * createNotification() already swallows its own errors.
+   */
+  await createNotification({
+    organizationId,
+    employeeId: data.employee_id,
+    type: "payslip_published",
+    title: "Your payslip is now available",
+    message: `Payslip for ${formatPayrollMonth(data.payroll_month)} has been published.`,
+  });
+
   return data;
 }
 
@@ -2048,6 +2078,23 @@ export async function publishPayslips({
   if (error) {
     throw error;
   }
+
+  /*
+   * Notify each employee whose payslip was actually published.
+   * Failures never fail the bulk publish — createNotification()
+   * already swallows its own errors.
+   */
+  await Promise.all(
+    (data || []).map((payslip) =>
+      createNotification({
+        organizationId,
+        employeeId: payslip.employee_id,
+        type: "payslip_published",
+        title: "Your payslip is now available",
+        message: `Payslip for ${formatPayrollMonth(payslip.payroll_month)} has been published.`,
+      })
+    )
+  );
 
   return {
     data:

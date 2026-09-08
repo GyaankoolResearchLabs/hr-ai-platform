@@ -3,6 +3,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 import { sendGeneratedDocumentEmail } from "../services/emailService.js";
+import { createNotification } from "../services/notificationService.js";
 import multer from "multer";
 const router = Router();
 
@@ -2724,6 +2725,33 @@ router.put(
 
           code:
             error.code || null,
+        });
+      }
+
+      /*
+       * Notify the employee once HR has made a verification decision.
+       * "pending" is not a decision (e.g. it's reset automatically
+       * when the document number changes) — nothing to notify about
+       * there. Notification failure must never fail the update
+       * itself — createNotification() already swallows its own
+       * errors.
+       */
+      if (
+        verification_status === "verified" ||
+        verification_status === "rejected"
+      ) {
+        await createNotification({
+          organizationId: req.organization.id,
+          employeeId: data.employee_id,
+          type:
+            verification_status === "verified"
+              ? "document_verified"
+              : "document_rejected",
+          title:
+            verification_status === "verified"
+              ? `Your ${getEmployeeDocumentName(data.document_type)} was verified`
+              : `Your ${getEmployeeDocumentName(data.document_type)} was rejected`,
+          message: data.notes || null,
         });
       }
 
