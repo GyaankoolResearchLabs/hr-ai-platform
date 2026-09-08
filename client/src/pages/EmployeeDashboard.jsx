@@ -9,12 +9,14 @@ import {
   GraduationCap,
   Loader2,
   ReceiptText,
+  Target,
   UserRound,
 } from "lucide-react";
 
 import api from "../lib/api";
 import employeeLearningService from "../services/employeeLearningService";
 import employeeMyDocumentsService from "../services/employeeMyDocumentsService";
+import employeePerformanceService from "../services/employeePerformanceService";
 
 function formatCurrency(value) {
   const number = Number(value || 0);
@@ -52,6 +54,7 @@ export default function EmployeeDashboard() {
   const [requests, setRequests] = useState([]);
   const [learningAssignments, setLearningAssignments] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -71,6 +74,7 @@ export default function EmployeeDashboard() {
         requestResponse,
         learningAssignmentsData,
         documentsData,
+        goalsData,
       ] = await Promise.all([
         api.get("/employees/me"),
         api.get("/payroll-runs/me"),
@@ -82,6 +86,7 @@ export default function EmployeeDashboard() {
         api.get("/employee-self-service"),
         employeeLearningService.list(),
         employeeMyDocumentsService.list(),
+        employeePerformanceService.listGoals(),
       ]);
 
       setProfile(profileResponse.data || null);
@@ -98,6 +103,7 @@ export default function EmployeeDashboard() {
       );
       setLearningAssignments(learningAssignmentsData);
       setDocuments(documentsData);
+      setGoals(goalsData);
     } catch (err) {
       console.error("Employee dashboard load error:", err);
 
@@ -167,6 +173,14 @@ export default function EmployeeDashboard() {
       overdue: countByStatus(learningAssignments, "overdue"),
     };
   }, [learningAssignments]);
+
+  const goalsSummary = useMemo(() => {
+    return {
+      total: goals.length,
+      completed: countByStatus(goals, "completed"),
+      inProgress: countByStatus(goals, "in_progress"),
+    };
+  }, [goals]);
 
   const claimSummary = useMemo(() => {
     const pending = claims.filter((claim) =>
@@ -346,6 +360,14 @@ export default function EmployeeDashboard() {
             documents.filter((doc) => doc.source === "uploaded").length
           } submitted`}
           to="/app/employee/documents"
+        />
+
+        <SummaryCard
+          icon={Target}
+          title="Performance"
+          value={goalsSummary.total}
+          detail={`${goalsSummary.completed} completed, ${goalsSummary.inProgress} in progress`}
+          to="/app/employee/performance"
         />
       </div>
 
