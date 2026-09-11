@@ -7,7 +7,7 @@ export default function AIAssistant() {
     {
       role: "assistant",
       content:
-        "I'm the HR AI Platform assistant. Once connected to a model, I'll help you navigate tools, draft HR documents, and answer policy questions grounded in your organization's data. For now I'm a placeholder wired to the backend AI service layer.",
+        "I'm the HR AI Platform assistant. Ask me about HR tools, policies, or processes — recruitment, onboarding, performance, attendance, leave, payroll, compliance, and more. I answer from general HR knowledge; I'm not yet grounded in this organization's specific data.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -45,7 +45,7 @@ export default function AIAssistant() {
         <div>
           <h1 className="font-display text-xl font-semibold text-ink-950">AI Assistant</h1>
           <p className="text-sm text-ink-500">
-            Placeholder chat — routes through <code className="text-xs">services/aiService.js</code>
+            General HR Q&A, powered by OpenAI — routes through <code className="text-xs">services/aiService.js</code>
           </p>
         </div>
       </div>

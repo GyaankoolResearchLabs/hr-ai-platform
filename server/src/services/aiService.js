@@ -290,7 +290,6 @@ recruiter, not like an AI-generated template.
           content: prompt,
         },
       ],
-      temperature: 0.7,
     });
 
   /*
@@ -409,7 +408,6 @@ ${organizationContext || "None supplied"}
             content: userPrompt,
           },
         ],
-        temperature: 0.7,
       });
 
     const reply =
