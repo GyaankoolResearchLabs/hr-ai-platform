@@ -467,7 +467,7 @@ export default function EmployeeAttendanceLeave() {
             <div className="max-h-96 divide-y divide-ink-100 overflow-y-auto">
               {attendance.map((record) => (
                 <div
-                  key={record.id}
+                  key={record.id || record.attendance_date}
                   className="flex items-center justify-between gap-4 px-5 py-3"
                 >
                   <div className="min-w-0">
