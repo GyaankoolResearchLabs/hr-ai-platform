@@ -101,6 +101,7 @@ hr-ai-platform/
 │       │   ├── layout/              # Sidebar, TopBar, AppLayout, AuthLayout
 │       │   └── common/              # RequireHRRole, RequireEmployeeRole, ProtectedRoute, ...
 │       └── pages/                   # HR tool pages + Employee* self-service pages
+│   └── test/                        # Vitest + RTL frontend test suite
 ├── server/                          # Node.js + Express
 │   └── src/
 │       ├── routes/                  # 60+ route files: HR tool catalog + employee*.js
@@ -128,7 +129,8 @@ hr-ai-platform/
 | Backend | Node.js + Express |
 | Database / Auth / Storage | Supabase |
 | Backend tests | Vitest + supertest, against a real isolated-fixture Supabase project (see below) |
-| CI | GitHub Actions — backend test suite + client build, on every push/PR to `main` |
+| Frontend tests | Vitest + React Testing Library, jsdom (see below) |
+| CI | GitHub Actions — backend + frontend test suites, and a client build, on every push/PR to `main` |
 
 ---
 
@@ -202,14 +204,28 @@ isolated, tagged fixture data (created and torn down per run) rather
 than a mocked client — see [`server/test/README.md`](./server/test/README.md)
 for the full rationale and what's covered.
 
-There is currently no frontend test suite.
+## Frontend test suite
+
+```bash
+cd client
+npm test
+```
+
+Vitest + React Testing Library, jsdom — component-level, no real
+backend or network calls. Prioritizes the client-side half of the
+role-security model (`RequireEmployeeRole` / `RequireHRRole`), a
+regression test for the stale-response race that has hit four
+different pages, `NotificationBell`, and one employee self-service
+page as a template for future page tests — see
+[`client/test/README.md`](./client/test/README.md) for the full
+rationale and what's covered.
 
 ## CI
 
 [`.github/workflows/test.yml`](./.github/workflows/test.yml) runs on
-every push and pull request to `main`: the backend test suite above,
-and a `vite build` of the client as a compile sanity check (there's no
-frontend test suite to run yet). The backend job needs `SUPABASE_URL`
+every push and pull request to `main`: the backend test suite, the
+frontend test suite, and a `vite build` of the client as a compile
+sanity check. The backend job needs `SUPABASE_URL`
 and `SUPABASE_SERVICE_ROLE_KEY` configured as **repository secrets**
 (Settings → Secrets and variables → Actions) pointing at the same
 Supabase project `server/.env` uses — no credentials are stored in the
