@@ -1,6 +1,7 @@
 import express from "express";
 
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 
 import {
   getPolicies,
@@ -97,6 +98,7 @@ router.get(
 router.post(
   "/",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -216,6 +218,7 @@ router.get(
 router.patch(
   "/:id",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -266,6 +269,7 @@ router.patch(
 router.post(
   "/:id/versions",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -339,6 +343,7 @@ router.post(
 router.post(
   "/:id/versions/:versionId/publish",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -397,6 +402,7 @@ router.post(
 router.post(
   "/:id/versions/:versionId/archive",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -512,6 +518,7 @@ router.get(
 router.post(
   "/:id/assignments",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =

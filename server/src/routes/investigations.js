@@ -1,6 +1,7 @@
 import express from "express";
 import { supabaseAdmin } from "../config/supabase.js";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 
 const router = express.Router();
@@ -229,6 +230,8 @@ router.use(async (req, res, next) => {
     });
   }
 });
+
+router.use(requireHRRole);
 
 /* =========================================================
    GET /api/investigations

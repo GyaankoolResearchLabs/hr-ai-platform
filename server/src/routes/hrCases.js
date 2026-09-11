@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 
 const router = Router();
 
 router.use(requireAuth);
+router.use(requireHRRole);
 
 function getOrganizationId(req) {
   return req.user?.organization_id;

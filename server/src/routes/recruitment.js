@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 import {
   extractResumeText,
@@ -39,6 +40,7 @@ async function requireOrganization(req, res, next) {
 }
 
 router.use(requireOrganization);
+router.use(requireHRRole);
 
 const resumeUpload = multer({
   storage: multer.memoryStorage(),

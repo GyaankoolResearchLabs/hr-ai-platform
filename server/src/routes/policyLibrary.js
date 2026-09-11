@@ -1,5 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 
@@ -512,7 +513,7 @@ router.get("/:id", async (req, res) => {
    POST /api/policy-library
 ========================================================= */
 
-router.post("/", async (req, res) => {
+router.post("/", requireHRRole, async (req, res) => {
   try {
     const organizationId = req.organization.id;
     const userId = req.user?.id || null;
@@ -752,7 +753,7 @@ router.post("/", async (req, res) => {
    PATCH /api/policy-library/:id
 ========================================================= */
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requireHRRole, async (req, res) => {
   try {
     const organizationId =
       req.organization.id;
@@ -995,6 +996,7 @@ router.get(
 
 router.post(
   "/:id/versions",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -1319,6 +1321,7 @@ router.get(
 
 router.post(
   "/:id/assignments",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
