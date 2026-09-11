@@ -1,5 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import {
   queryWorkforceData,
 } from "../services/workforceQueryService.js";
@@ -8,7 +9,7 @@ const router = express.Router();
 
 // POST /api/workforce-query
 // Requires authentication - uses req.user.organization_id set by requireAuth middleware
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, requireHRRole, async (req, res) => {
   try {
     const { question } = req.body || {};
 

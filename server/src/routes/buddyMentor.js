@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 
 import {
@@ -50,6 +51,7 @@ async function requireOrganization(req, res, next) {
 }
 
 router.use(requireOrganization);
+router.use(requireHRRole);
 
 /* =========================================================
    HELPER

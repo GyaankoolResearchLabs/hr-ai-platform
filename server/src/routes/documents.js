@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 import { sendGeneratedDocumentEmail } from "../services/emailService.js";
@@ -8,6 +9,7 @@ import multer from "multer";
 const router = Router();
 
 router.use(requireAuth);
+router.use(requireHRRole);
 /* =========================================================
    EMPLOYEE DOCUMENT UPLOAD
 

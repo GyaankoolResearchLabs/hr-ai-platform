@@ -1,5 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { createAuditLog } from "../services/auditLogService.js";
 
 import {
@@ -16,6 +17,7 @@ import {
 const router = express.Router();
 
 router.use(requireAuth);
+router.use(requireHRRole);
 
 async function audit(
   req,

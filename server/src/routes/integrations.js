@@ -1,5 +1,6 @@
 import express from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 
 const router = express.Router();
@@ -11,6 +12,7 @@ const router = express.Router();
 */
 
 router.use(requireAuth);
+router.use(requireHRRole);
 
 /*
 |--------------------------------------------------------------------------

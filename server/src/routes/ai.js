@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { aiService } from "../services/aiService.js";
 
 const router = Router();
 
 // POST /api/ai/assistant
-router.post("/assistant", requireAuth, async (req, res) => {
+router.post("/assistant", requireAuth, requireHRRole, async (req, res) => {
   const { prompt, context } = req.body || {};
 
   if (!prompt || !prompt.trim()) {
@@ -28,6 +29,7 @@ router.post("/assistant", requireAuth, async (req, res) => {
 router.post(
   "/job-description",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       console.log("");

@@ -1,6 +1,7 @@
 import express from "express";
 
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 
 import {
   getPulseSurveys,
@@ -135,6 +136,7 @@ router.get(
 router.post(
   "/",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -221,6 +223,7 @@ router.post(
 router.patch(
   "/:id",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -273,6 +276,7 @@ router.patch(
 router.post(
   "/:id/publish",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -324,6 +328,7 @@ router.post(
 router.post(
   "/:id/close",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =

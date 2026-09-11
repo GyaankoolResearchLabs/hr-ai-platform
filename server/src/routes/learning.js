@@ -1,5 +1,8 @@
 import express from "express";
 
+import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
+
 import {
   generateCourse,
   getCourses,
@@ -7,6 +10,24 @@ import {
 } from "../services/learningService.js";
 
 const router = express.Router();
+
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATION
+|--------------------------------------------------------------------------
+|
+| This router previously had no auth middleware at all - every route
+| below is Supabase-authenticated + HR-role-gated now, matching the
+| AI Course Generator tool it backs (client/src/pages/tools; mounted
+| inside RequireHRRole in App.jsx). getOrganizationId()'s req.body /
+| req.query fallback below is dead once requireAuth always populates
+| req.user.organization_id first - left in place, but no longer
+| reachable as a spoof vector.
+|--------------------------------------------------------------------------
+*/
+
+router.use(requireAuth);
+router.use(requireHRRole);
 
 /* =========================================================
    ORGANIZATION ID HELPER

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 
 import {
@@ -50,6 +51,7 @@ async function requireOrganization(
 }
 
 router.use(requireOrganization);
+router.use(requireHRRole);
 
 /* =========================================================
    GET ORG CHART

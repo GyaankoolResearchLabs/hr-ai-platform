@@ -1,6 +1,7 @@
 import express from "express";
 
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 
 import {
   getGoalsAndOkrs,
@@ -29,6 +30,7 @@ const router = express.Router();
 */
 
 router.use(requireAuth);
+router.use(requireHRRole);
 
 /* =========================================================
    GET ALL GOALS / OKRS

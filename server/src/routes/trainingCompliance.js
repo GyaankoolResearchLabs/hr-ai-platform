@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 
@@ -32,6 +33,7 @@ async function requireOrganization(req, res, next) {
 }
 
 router.use(requireOrganization);
+router.use(requireHRRole);
 
 function cleanId(value) {
   return value ? String(value).trim() : "";
