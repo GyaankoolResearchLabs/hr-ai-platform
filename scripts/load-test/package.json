@@ -1,0 +1,15 @@
+{
+  "name": "load-test",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Dev-only local load/performance test against the running backend. Not part of the app build, not run in CI. See README.md.",
+  "type": "module",
+  "scripts": {
+    "start": "node run.mjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.116.0",
+    "autocannon": "^8.0.0",
+    "dotenv": "^17.4.2"
+  }
+}

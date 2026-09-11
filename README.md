@@ -220,6 +220,21 @@ page as a template for future page tests — see
 [`client/test/README.md`](./client/test/README.md) for the full
 rationale and what's covered.
 
+## Load test (dev-only)
+
+```bash
+cd scripts/load-test
+npm install
+LOAD_TEST_HR_EMAIL=<hr-account-email> LOAD_TEST_EMPLOYEE_EMAIL=<employee-account-email> npm start
+```
+
+A small local autocannon check against a handful of read endpoints,
+against whatever Supabase project `server/.env` points at — **not run
+in CI**, since it generates real traffic (and, for one endpoint, real
+audit-log rows). See
+[`scripts/load-test/README.md`](./scripts/load-test/README.md) for
+what it hits, current findings, and full usage.
+
 ## CI
 
 [`.github/workflows/test.yml`](./.github/workflows/test.yml) runs on
