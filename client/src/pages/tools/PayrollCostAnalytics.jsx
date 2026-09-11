@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   BarChart3,
@@ -773,11 +773,24 @@ export default function PayrollCostAnalytics() {
      LOAD ANALYTICS
   ======================================================= */
 
+  /*
+   * loadAnalytics re-fires whenever a filter changes (it's a
+   * useCallback dep of the effect below). If a user toggles filters
+   * quickly, an earlier (slower) request could resolve after a later
+   * (faster) one and overwrite the correct, newer results with stale
+   * data. analyticsRequestIdRef guards against that, same pattern as
+   * AttendanceLeaveTracker.jsx / TrainingComplianceTracker.jsx.
+   */
+  const analyticsRequestIdRef = useRef(0);
+
   const loadAnalytics =
     useCallback(
       async (
         showRefreshState = false,
       ) => {
+        const requestId =
+          ++analyticsRequestIdRef.current;
+
         try {
           if (showRefreshState) {
             setRefreshing(true);
@@ -841,8 +854,23 @@ export default function PayrollCostAnalytics() {
               response,
             );
 
+          if (
+            analyticsRequestIdRef.current !==
+            requestId
+          ) {
+            // A newer loadAnalytics() call has started since.
+            return;
+          }
+
           setAnalytics(data);
         } catch (loadError) {
+          if (
+            analyticsRequestIdRef.current !==
+            requestId
+          ) {
+            return;
+          }
+
           console.error(
             "Payroll analytics error:",
             loadError,
@@ -855,8 +883,13 @@ export default function PayrollCostAnalytics() {
               "Could not load payroll cost analytics.",
           );
         } finally {
-          setLoading(false);
-          setRefreshing(false);
+          if (
+            analyticsRequestIdRef.current ===
+            requestId
+          ) {
+            setLoading(false);
+            setRefreshing(false);
+          }
         }
       },
       [
@@ -914,8 +947,16 @@ export default function PayrollCostAnalytics() {
   const [trendLoading, setTrendLoading] =
     useState(false);
 
+  /*
+   * Same stale-response race as loadAnalytics above - loadTrend also
+   * re-fires on filter changes.
+   */
+  const trendRequestIdRef = useRef(0);
+
   const loadTrend =
     useCallback(async () => {
+      const requestId = ++trendRequestIdRef.current;
+
       try {
         setTrendLoading(true);
 
@@ -952,12 +993,25 @@ export default function PayrollCostAnalytics() {
         const response =
           await api.get(endpoint);
 
+        if (
+          trendRequestIdRef.current !== requestId
+        ) {
+          // A newer loadTrend() call has started since.
+          return;
+        }
+
         setTrend(
           getResponseData(
             response,
           ),
         );
       } catch (trendError) {
+        if (
+          trendRequestIdRef.current !== requestId
+        ) {
+          return;
+        }
+
         console.error(
           "Payroll cost trend error:",
           trendError,
@@ -965,7 +1019,11 @@ export default function PayrollCostAnalytics() {
 
         setTrend([]);
       } finally {
-        setTrendLoading(false);
+        if (
+          trendRequestIdRef.current === requestId
+        ) {
+          setTrendLoading(false);
+        }
       }
     }, [
       selectedMonth,

@@ -159,8 +159,6 @@ Requirements:
 
         max_tokens: 12000,
 
-        temperature: 0.2,
-
         messages: [
           {
             role: "user",

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../lib/api";
 import {
@@ -327,7 +327,19 @@ export default function InvestigationTracker() {
     };
   }, [investigations]);
 
+  /*
+   * loadRequestIdRef guards against a stale response overwriting a
+   * newer one: statusFilter/priorityFilter changes re-trigger this
+   * load, and if a user toggles filters quickly, an earlier (slower)
+   * request could resolve after a later (faster) one and clobber the
+   * correct, newer results. Same pattern as AttendanceLeaveTracker.jsx
+   * / TrainingComplianceTracker.jsx.
+   */
+  const loadRequestIdRef = useRef(0);
+
   async function loadInvestigations() {
+    const requestId = ++loadRequestIdRef.current;
+
     try {
       setLoading(true);
       setError("");
@@ -351,10 +363,19 @@ export default function InvestigationTracker() {
         { params }
       );
 
+      if (loadRequestIdRef.current !== requestId) {
+        // A newer loadInvestigations() call has started since.
+        return;
+      }
+
       setInvestigations(
         response.data?.investigations || []
       );
     } catch (err) {
+      if (loadRequestIdRef.current !== requestId) {
+        return;
+      }
+
       console.error(
         "[InvestigationTracker] Load investigations error:",
         err
@@ -367,7 +388,9 @@ export default function InvestigationTracker() {
         )
       );
     } finally {
-      setLoading(false);
+      if (loadRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }
 

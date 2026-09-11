@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  AlertCircle,
   ArrowLeft,
   ClipboardList,
   Plus,
@@ -22,6 +23,7 @@ export default function HRRequestIntake() {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -37,6 +39,7 @@ export default function HRRequestIntake() {
   const loadRequests = async () => {
     try {
       setLoading(true);
+      setLoadError("");
 
       const response = await api.get("/hr-requests");
 
@@ -51,7 +54,14 @@ export default function HRRequestIntake() {
       }
     } catch (error) {
       console.error("Failed to load HR requests:", error);
+
       setRequests([]);
+
+      setLoadError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Could not load HR requests."
+      );
     } finally {
       setLoading(false);
     }
@@ -359,6 +369,16 @@ export default function HRRequestIntake() {
         </div>
       )}
 
+      {loadError && (
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <AlertCircle
+            size={18}
+            className="mt-0.5 shrink-0"
+          />
+          <span>{loadError}</span>
+        </div>
+      )}
+
       {/* =====================================================
           STATISTICS
       ===================================================== */}
@@ -464,6 +484,20 @@ export default function HRRequestIntake() {
         {loading ? (
           <div className="p-10 text-center text-sm text-ink-500">
             Loading HR requests...
+          </div>
+        ) : loadError ? (
+          <div className="p-12 text-center">
+
+            <AlertCircle className="mx-auto h-8 w-8 text-red-400" />
+
+            <h3 className="mt-3 text-sm font-semibold text-ink-900">
+              Couldn't load HR requests
+            </h3>
+
+            <p className="mt-1 text-sm text-ink-500">
+              {loadError}
+            </p>
+
           </div>
         ) : filteredRequests.length === 0 ? (
           <div className="p-12 text-center">
