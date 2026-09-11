@@ -1,19 +1,86 @@
 # HR AI Platform
 
-A subscription-based AI HR platform. A company subscribes once and gets
-access to every HR tool in one application — organized into 14 categories,
-where every tool maps back to a specific, documented HR problem.
+A subscription-based HR platform. A company subscribes once and gets
+access to every HR tool in one application — organized into 15
+categories, where every tool maps back to a specific, documented HR
+problem — plus a full self-service dashboard for employees.
 
 This is **not** a generic HRMS. There is no generic "Analytics" page with
 random charts, no module that exists just to exist. See
 [`docs/problem-solution-matrix.md`](./docs/problem-solution-matrix.md) for
 the full problem → tool catalog this app is built against.
 
-This repository is the **application foundation**: navigation, auth,
-organization setup, layout, and the configuration-driven category/tool
-architecture. No individual AI tool has been built yet — every tool card
-you see is `status: 'planned'` and links to a documented problem, not a
-working feature.
+---
+
+## What's built
+
+### HR-side tool catalog
+
+`client/src/config/categories.js` is the single source of truth for
+navigation and the problem→solution catalog: **15 categories, 57 tools,
+all `status: "available"`.**
+
+Administrative HR (incl. Payroll), Recruitment, Employee Support,
+Onboarding, Performance, Learning & Development, Workforce Planning,
+Employee Engagement, HR Analytics, Compensation, Employee Relations,
+HR Compliance, HR Technology, Strategic HR.
+
+Every category/subcategory/problem/tool in the sidebar and on category
+pages renders from that one config file — adding a tool never means
+touching routing or layout code.
+
+### Employee self-service dashboard
+
+A separate, role-gated area (`/app/employee/*`) where an employee logs
+in with their own account and only ever sees their own data:
+
+| Page | What it does |
+|---|---|
+| My Profile | View own employee record |
+| Attendance & Leave | Self clock-in/clock-out, view attendance history, submit leave requests |
+| Payslips | View/download own published payslips |
+| Reimbursements | Submit and track own expense claims |
+| Learning | View assigned courses, track progress, mark complete |
+| Documents | View own uploaded/verified HR documents |
+| Notifications | Own notification feed (leave approvals, payslip publication, etc.) |
+| Performance | View own goals and performance reviews |
+| Full & Final Settlement | View own F&F settlement, once generated |
+
+Each employee route is backed by its own Express route
+(`server/src/routes/employee*.js`) that resolves the caller's employee
+record from their verified JWT and scopes every query to it — an
+employee can never read or act on another employee's data (enforced
+end-to-end, see [Security model](#security-model) and the test suite).
+
+### Invitation / identity-mapping flow
+
+An `employees` row (created by HR) and a Supabase Auth user account
+start out unlinked. `POST /api/employee-invitations` (HR-only) creates
+an invitation; the invitee accepts it (matching email required) via
+`POST /api/employee-invitations/.../accept`, which links
+`employees.user_id` to their auth user and creates their
+`organization_members` row with role `employee`. An invitation can't be
+accepted by a mismatched email or accepted twice. Until accepted, the
+employee identity middleware falls back to matching on verified email
+so a not-yet-linked employee still isn't locked out mid-flow.
+
+### Security model
+
+- **Role separation.** `organization_members.role` is `owner` / an
+  HR role, or `employee`. `RequireHRRole` (client) redirects an
+  employee-role account away from the entire HR sidebar/tool catalog to
+  their own dashboard; `RequireEmployeeRole` is the mirror guard for
+  `/app/employee/*`. Enforcement is server-side too — HR-only write
+  endpoints check role, not just the client route guard.
+- **Ownership isolation.** Every `employee/*` route resolves the caller
+  to their own `employees` row from their JWT
+  (`middleware/resolveEmployee.js`) and scopes queries to it; a
+  client-supplied id is never trusted. Reaching for another employee's
+  resource returns 404, not 403 — existence isn't leaked either.
+- **Express is the trust boundary.** The backend uses the Supabase
+  service-role key and verifies every request's JWT itself
+  (`middleware/auth.js`), rather than relying on the browser talking to
+  Supabase directly with RLS policies.
 
 ---
 
@@ -23,57 +90,33 @@ working feature.
 Category → Subcategory → HR Problem → Tool
 ```
 
-Every category in the sidebar, every card on the dashboard, and every
-tool card on a category page renders from a single config file:
-`client/src/config/categories.js`. Adding a new tool never means touching
-routing, navigation, or layout code — you add an entry to that file (and
-to the matrix doc) and it appears everywhere automatically.
-
 ```
 hr-ai-platform/
-├── client/                      # React + Vite + Tailwind CSS
+├── client/                          # React + Vite + Tailwind CSS
 │   └── src/
-│       ├── config/categories.js # Category → Subcategory → Problem → Tool
-│       ├── services/            # api.js, authService, aiService, subscriptionService, ...
+│       ├── config/categories.js     # Category → Subcategory → Problem → Tool
+│       ├── services/                # api.js, authService, employee*Service.js, ...
 │       ├── context/AuthContext.jsx
 │       ├── components/
-│       │   ├── layout/          # Sidebar, TopBar, AppLayout, AuthLayout
-│       │   └── common/          # CategoryCard, ToolCard, ProtectedRoute, StatusBadge
-│       └── pages/                # Landing, Login, Signup, OrganizationSetup,
-│                                  # Dashboard, CategoryDetail, AIAssistant, Employees, Settings
-├── server/                      # Node.js + Express
+│       │   ├── layout/              # Sidebar, TopBar, AppLayout, AuthLayout
+│       │   └── common/              # RequireHRRole, RequireEmployeeRole, ProtectedRoute, ...
+│       └── pages/                   # HR tool pages + Employee* self-service pages
+├── server/                          # Node.js + Express
 │   └── src/
-│       ├── routes/               # organizations, employees, subscription, ai
-│       ├── middleware/auth.js    # verifies Supabase JWTs
-│       ├── config/supabase.js    # service-role Supabase client
-│       └── services/             # aiService.js (placeholder AI seam), organizationLookup.js
+│       ├── routes/                  # 60+ route files: HR tool catalog + employee*.js
+│       ├── middleware/
+│       │   ├── auth.js              # verifies Supabase JWTs
+│       │   └── resolveEmployee.js   # JWT -> caller's own employee record
+│       ├── config/supabase.js       # service-role Supabase client
+│       └── services/
+│   └── test/                        # Vitest + supertest backend security suite
+├── .github/workflows/test.yml       # CI: backend tests + client build, on push/PR to main
 ├── docs/
 │   ├── problem-solution-matrix.md
-│   └── supabase-schema.sql       # run this in the Supabase SQL editor
+│   └── supabase-schema.sql          # run this in the Supabase SQL editor
 ├── .env.example
 └── README.md
 ```
-
-### Why this structure
-
-- **Config-driven navigation.** `categories.js` is plain data — the 14
-  categories are fixed per the product spec, but subcategories, problems,
-  and tools are just array entries. No category list is hardcoded twice.
-- **AI as a service layer, not a feature.** Both the client
-  (`src/services/aiService.js`) and server (`src/services/aiService.js`)
-  isolate all AI calls behind one function each (`ask` / `respond`).
-  Today both are placeholders. Wiring in a real provider later — Anthropic
-  or otherwise — means editing those two files, not the app.
-- **Subscription as a mockable foundation.** `subscriptionService.js` on
-  both sides reads/writes a `subscriptions` table with a `status` field.
-  There's no payment provider yet; when one is added, only that service
-  needs to change. One active subscription unlocks every category — there
-  is no per-tool billing.
-- **Express is the trust boundary.** The backend uses the Supabase
-  service-role key and verifies every request's JWT itself
-  (`middleware/auth.js`), rather than relying on the browser talking to
-  Supabase directly with RLS policies. Simpler to reason about while the
-  data model is still small.
 
 ---
 
@@ -84,7 +127,8 @@ hr-ai-platform/
 | Frontend | React + Vite + Tailwind CSS + React Router + Axios + Lucide React |
 | Backend | Node.js + Express |
 | Database / Auth / Storage | Supabase |
-| AI integration | Service-layer seam (`aiService.js`), no provider wired in yet |
+| Backend tests | Vitest + supertest, against a real isolated-fixture Supabase project (see below) |
+| CI | GitHub Actions — backend test suite + client build, on every push/PR to `main` |
 
 ---
 
@@ -93,13 +137,9 @@ hr-ai-platform/
 ### 1. Create a Supabase project
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL editor, run [`docs/supabase-schema.sql`](./docs/supabase-schema.sql)
-   to create the `organizations`, `organization_members`, `subscriptions`,
-   and `employees` tables.
-3. From **Project Settings → API**, grab:
-   - Project URL
-   - `anon` public key
-   - `service_role` secret key
+2. In the SQL editor, run [`docs/supabase-schema.sql`](./docs/supabase-schema.sql).
+3. From **Project Settings → API**, grab the Project URL, `anon` public
+   key, and `service_role` secret key.
 
 ### 2. Configure environment variables
 
@@ -139,35 +179,41 @@ npm install
 npm run dev         # http://localhost:5173
 ```
 
-Visit `http://localhost:5173`. You should see the landing page. Sign up,
-confirm your email if your Supabase project requires it, log in, complete
-organization setup, and you'll land on the dashboard's 14-category
-directory.
-
-Without valid Supabase credentials the frontend and backend both still
-start and the landing/login/signup pages render — auth calls will simply
-fail with a clear error until real credentials are added.
+Visit `http://localhost:5173`. Sign up, confirm your email if your
+Supabase project requires it, log in, complete organization setup, and
+you'll land on the dashboard's category directory. HR-role accounts see
+the full tool catalog; an employee-role account (after accepting an
+invitation) lands on the Employee Dashboard instead.
 
 ---
 
-## What's built vs. what's next
+## Backend test suite
 
-**Built (this foundation):**
-- Landing, login, signup, organization setup
-- Protected app shell with sidebar (all 14 categories), top bar
-- Dashboard as a directory of the 14 categories
-- Category detail pages rendering subcategories → problems → tools
-- Complete Payroll section under Administrative HR (6 problem/tool pairs)
-- Employee foundation (list + add)
-- Settings (organization, account, subscription status)
-- AI Assistant placeholder wired through the service layer
-- Mockable subscription status (trialing/active/inactive)
+```bash
+cd server
+npm test
+```
 
-**Explicitly not built yet (by design):**
-- Any working AI tool logic
-- Real payroll calculation logic
-- A payment provider integration
-- Additional HR categories beyond the fixed 14
+Vitest + supertest, prioritizing the security-critical logic: JWT
+resolution (`resolveEmployee`), ownership isolation across every
+`employee/*` route, role-gating on HR-only write endpoints, and the
+invite/accept flow. Runs against a real Supabase project with fully
+isolated, tagged fixture data (created and torn down per run) rather
+than a mocked client — see [`server/test/README.md`](./server/test/README.md)
+for the full rationale and what's covered.
+
+There is currently no frontend test suite.
+
+## CI
+
+[`.github/workflows/test.yml`](./.github/workflows/test.yml) runs on
+every push and pull request to `main`: the backend test suite above,
+and a `vite build` of the client as a compile sanity check (there's no
+frontend test suite to run yet). The backend job needs `SUPABASE_URL`
+and `SUPABASE_SERVICE_ROLE_KEY` configured as **repository secrets**
+(Settings → Secrets and variables → Actions) pointing at the same
+Supabase project `server/.env` uses — no credentials are stored in the
+workflow file itself.
 
 ---
 
