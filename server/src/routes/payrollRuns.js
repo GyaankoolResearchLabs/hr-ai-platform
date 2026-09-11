@@ -2,6 +2,7 @@ import express from "express";
 
 import { requireAuth } from "../middleware/auth.js";
 import { resolveEmployee as requireEmployee } from "../middleware/resolveEmployee.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 
 import {
@@ -226,7 +227,7 @@ router.get("/:id", async (req, res) => {
    POST /api/payroll-runs
 ========================================================= */
 
-router.post("/", async (req, res) => {
+router.post("/", requireHRRole, async (req, res) => {
   try {
     const organizationId =
       getOrganizationId(req);
@@ -308,6 +309,7 @@ router.post("/", async (req, res) => {
 
 router.patch(
   "/:runId/items/:itemId",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -383,6 +385,7 @@ router.patch(
 
 router.post(
   "/:id/submit",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -453,6 +456,7 @@ router.post(
 
 router.post(
   "/:id/draft",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -523,6 +527,7 @@ router.post(
 
 router.post(
   "/:id/approve",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -595,6 +600,7 @@ router.post(
 
 router.post(
   "/:id/process",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -669,6 +675,7 @@ router.post(
 
 router.delete(
   "/:id",
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =

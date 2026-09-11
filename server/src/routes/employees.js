@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 import { createAuditLog } from "../services/auditLogService.js";
@@ -423,7 +424,7 @@ router.get("/:id", async (req, res) => {
    POST /api/employees
 ========================================================= */
 
-router.post("/", async (req, res) => {
+router.post("/", requireHRRole, async (req, res) => {
   try {
     const {
       full_name,
@@ -712,6 +713,7 @@ router.post("/", async (req, res) => {
 
 router.post(
   "/bulk",
+  requireHRRole,
   async (req, res) => {
     try {
       const incomingEmployees =
@@ -1262,6 +1264,7 @@ router.post(
 
 router.put(
   "/:id",
+  requireHRRole,
   async (req, res) => {
     try {
       const {
@@ -1576,6 +1579,7 @@ router.put(
 
 router.delete(
   "/:id",
+  requireHRRole,
   async (req, res) => {
     try {
       const {

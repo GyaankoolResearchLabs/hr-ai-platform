@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { resolveEmployee as requireEmployee } from "../middleware/resolveEmployee.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 
 import {
@@ -422,6 +423,7 @@ router.get(
 
 router.post(
   "/categories",
+  requireHRRole,
   async (req, res) => {
     try {
       const category =
@@ -463,6 +465,7 @@ router.post(
 
 router.patch(
   "/categories/:categoryId",
+  requireHRRole,
   async (req, res) => {
     try {
       const category =
@@ -997,6 +1000,7 @@ router.post(
 
 router.post(
   "/",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1103,6 +1107,7 @@ router.get(
 
 router.patch(
   "/:claimId",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1165,6 +1170,7 @@ router.patch(
 
 router.post(
   "/:claimId/items",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1251,6 +1257,7 @@ router.post(
 
 router.patch(
   "/items/:claimItemId",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1333,6 +1340,7 @@ router.patch(
 
 router.delete(
   "/items/:claimItemId",
+  requireHRRole,
   async (req, res) => {
     try {
       const result =
@@ -1372,6 +1380,7 @@ router.delete(
 
 router.post(
   "/:claimId/submit",
+  requireHRRole,
   async (req, res) => {
     try {
       const claim =
@@ -1414,6 +1423,7 @@ router.post(
 
 router.post(
   "/:claimId/review",
+  requireHRRole,
   async (req, res) => {
     try {
       const claim =
@@ -1456,6 +1466,7 @@ router.post(
 
 router.post(
   "/:claimId/approve",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1509,6 +1520,7 @@ router.post(
 
 router.post(
   "/:claimId/reject",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1559,6 +1571,7 @@ router.post(
 
 router.post(
   "/:claimId/pay",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1608,6 +1621,7 @@ router.post(
 
 router.post(
   "/:claimId/reconcile",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1698,6 +1712,7 @@ router.get(
 
 router.post(
   "/:claimId/receipts",
+  requireHRRole,
   async (req, res) => {
     try {
       const body =
@@ -1762,6 +1777,7 @@ router.post(
 
 router.delete(
   "/receipts/:receiptId",
+  requireHRRole,
   async (req, res) => {
     try {
       const result =
@@ -1840,6 +1856,7 @@ router.get(
 
 router.post(
   "/:claimId/cancel",
+  requireHRRole,
   async (req, res) => {
     try {
       const claim =
@@ -1882,6 +1899,7 @@ router.post(
 
 router.delete(
   "/:claimId",
+  requireHRRole,
   async (req, res) => {
     try {
       const result =

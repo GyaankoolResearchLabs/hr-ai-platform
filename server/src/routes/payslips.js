@@ -9,6 +9,10 @@ import {
 } from "../middleware/resolveEmployee.js";
 
 import {
+  requireHRRole,
+} from "../middleware/requireHRRole.js";
+
+import {
   getOrganizationIdFromRequest,
   getUserIdFromRequest,
 } from "../utils/requestContext.js";
@@ -121,6 +125,7 @@ function parseInteger(
 router.post(
   "/payroll-runs/:payrollRunId/generate",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -527,6 +532,7 @@ router.get(
 router.post(
   "/:payslipId/regenerate",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -575,6 +581,7 @@ router.post(
 router.post(
   "/:payslipId/publish",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -623,6 +630,7 @@ router.post(
 router.post(
   "/publish",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -683,6 +691,7 @@ router.post(
 router.post(
   "/:payslipId/void",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -724,6 +733,7 @@ router.post(
 router.post(
   "/:payslipId/view",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -762,6 +772,7 @@ router.post(
 router.post(
   "/:payslipId/download",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -800,6 +811,7 @@ router.post(
 router.patch(
   "/:payslipId/pdf",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =
@@ -858,6 +870,7 @@ router.patch(
 router.delete(
   "/:payslipId",
   requireAuth,
+  requireHRRole,
   async (req, res) => {
     try {
       const organizationId =

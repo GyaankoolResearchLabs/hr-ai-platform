@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { requireHRRole } from "../middleware/requireHRRole.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getOrganizationForUser } from "../services/organizationLookup.js";
 
@@ -61,7 +62,7 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 // PATCH /api/organizations/me - update current organization details
-router.patch("/me", requireAuth, async (req, res) => {
+router.patch("/me", requireAuth, requireHRRole, async (req, res) => {
   const { name, industry, size } = req.body || {};
 
   const allowed = {};
