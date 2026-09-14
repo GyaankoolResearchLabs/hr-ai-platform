@@ -1,0 +1,24 @@
+# Netlify build config for the client (client/).
+#
+# This does not deploy anything by itself — Netlify reads it when you
+# connect this repo as a site. The server (server/) is deployed
+# separately to Render — see render.yaml.
+
+[build]
+  base = "client"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# This is a client-side-routed SPA (react-router-dom's BrowserRouter —
+# see client/src/App.jsx). Without this rule, Netlify's static host
+# 404s on a hard refresh/direct link to anything but "/" (e.g.
+# /app/dashboard, /platform-admin/logs) because no such file exists on
+# disk. This sends every path to index.html and lets the client router
+# resolve it instead.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

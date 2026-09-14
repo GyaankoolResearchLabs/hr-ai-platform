@@ -1,0 +1,61 @@
+# Render Blueprint for the Express API (server/).
+#
+# This does not deploy anything by itself — it's read when you create a
+# service from this repo via Render's "New +" -> "Blueprint" flow, or
+# you can ignore it entirely and configure a plain Web Service manually
+# with the same settings (see README.md's "Deployment" section).
+#
+# The client (client/) is deployed separately to Netlify — see
+# netlify.toml — Render only hosts the API.
+#
+# Every `sync: false` env var has no value here on purpose: Render will
+# prompt you to fill each one in from its dashboard when the service is
+# created, and never commits a secret to this file.
+
+services:
+  - type: web
+    name: hr-ai-platform-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      # Render injects PORT automatically — do not set it here.
+      - key: NODE_ENV
+        value: production
+
+      # Required — see server/.env.example for what each one does.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+
+      # Optional — feature-gated, server still starts without these.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: INTEGRATION_ENCRYPTION_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_JSON
+        sync: false
+
+      # Leave unset/false in production — see server/.env.example.
+      - key: ESCALATION_TEST_MODE
+        value: "false"

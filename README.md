@@ -189,6 +189,95 @@ invitation) lands on the Employee Dashboard instead.
 
 ---
 
+## Deployment
+
+The client and server deploy as two separate services against the same
+Supabase project: **client/ → Netlify**, **server/ → Render**. Nothing in
+either is hardcoded to `localhost` — both read their API/CORS origin from
+environment variables, with a `localhost` value used only as a local-dev
+fallback when that variable isn't set (see `client/src/lib/api.js` and
+`server/src/index.js`).
+
+### Server → Render
+
+[`render.yaml`](./render.yaml) at the repo root is a Render Blueprint for
+this — "New +" → "Blueprint" in the Render dashboard, point it at this
+repo, and it pre-fills the settings below (every secret is left blank on
+purpose; Render prompts you to fill each one in). To configure a plain Web
+Service by hand instead, use:
+
+| Setting | Value |
+|---|---|
+| Root directory | `server` |
+| Build command | `npm install` |
+| Start command | `npm start` (runs `node src/index.js`, see `server/package.json`) |
+| Health check path | `/api/health` |
+
+Render sets `PORT` itself — `server/src/index.js` already reads
+`process.env.PORT` (falling back to `4000` only when unset, for local
+dev) and binds to `0.0.0.0`, so nothing needs to change for that. It also
+sits behind Render's reverse proxy, which `app.set("trust proxy", 1)` in
+`index.js` accounts for.
+
+**Environment variables to enter in Render's dashboard** (see
+`server/.env.example` for what each one does and which are required vs.
+feature-gated/optional):
+
+Required:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_ANON_KEY` — used by `POST /api/auth/login`; without it every
+  login attempt fails, not just wrong-password ones.
+- `CLIENT_ORIGIN` — your Netlify site's exact URL (e.g.
+  `https://your-app.netlify.app`), no trailing slash. Gates CORS and is
+  used to build links in outgoing emails.
+
+Optional (only the specific feature using one fails without it):
+- `OPENAI_API_KEY`, `OPENAI_MODEL`
+- `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (AI Course Generator only)
+- `RESEND_API_KEY`, `EMAIL_FROM`
+- `INTEGRATION_ENCRYPTION_KEY`
+- `SUPABASE_JWT_SECRET`, `SUPABASE_JWKS_JSON`
+
+Leave unset (or `false`) in production:
+- `ESCALATION_TEST_MODE` — gates a destructive test-only cleanup
+  endpoint.
+
+### Client → Netlify
+
+[`netlify.toml`](./netlify.toml) at the repo root configures this
+automatically when you connect the repo as a Netlify site — base
+directory `client`, build command `npm run build`, publish directory
+`dist` (Vite's default output — confirmed unchanged in
+`client/vite.config.js`, so Netlify's own default publish setting of
+`dist` would also work even without the toml file). To configure by hand
+instead, use the same three values in Netlify's UI.
+
+`netlify.toml` also adds the SPA fallback redirect
+(`/* → /index.html`) this app needs: it's a client-side-routed app
+(`react-router-dom`'s `BrowserRouter`), so without that rule, a hard
+refresh or direct link to anything but `/` (e.g. `/app/dashboard`,
+`/platform-admin/logs`) 404s on Netlify's static host.
+
+**Environment variables to enter in Netlify's dashboard** (Site settings
+→ Build & deploy → Environment) — these are read at **build** time by
+Vite, so setting/changing one requires a rebuild, not just a redeploy:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_API_URL` — your Render service's URL **with the `/api` suffix**,
+  e.g. `https://hr-ai-platform-api.onrender.com/api`.
+
+### Deploy order
+
+Deploy the server first, note its Render URL, then set `VITE_API_URL` to
+it before/while deploying the client. Once the client has a real URL,
+set `CLIENT_ORIGIN` on the server to that and redeploy the server (or
+just set both up front if you already know the Netlify subdomain you'll
+use — Netlify lets you pick one before the first deploy).
+
+---
+
 ## Backend test suite
 
 ```bash

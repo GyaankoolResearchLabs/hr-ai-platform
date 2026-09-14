@@ -101,6 +101,17 @@ import {
 
 const app = express();
 
+/*
+ * Render (and most PaaS hosts) put the app behind a reverse proxy.
+ * Without this, req.ip resolves to the proxy's internal address rather
+ * than the real client — trust the first hop so X-Forwarded-For/
+ * X-Forwarded-Proto are honored. (services/auditLogService.js and
+ * services/platformErrorLogService.js already parse X-Forwarded-For
+ * manually as a fallback, so IP capture worked either way — this
+ * makes Express's own req.ip/req.secure correct too.)
+ */
+app.set("trust proxy", 1);
+
 const PORT = Number(process.env.PORT) || 4000;
 
 const normalizeOrigin = (value) =>
