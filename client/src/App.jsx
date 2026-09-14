@@ -125,6 +125,12 @@ import HRRequestIntake from "./pages/tools/HRRequestIntake";
 import HRRequestRouter from "./pages/tools/HRRequestRouter";
 
 /* =========================================================
+   PLATFORM MONITORING (operator-only — see below)
+========================================================= */
+
+import PlatformAdminLogs from "./pages/platform-admin/PlatformAdminLogs";
+
+/* =========================================================
    APP
 ========================================================= */
 
@@ -150,6 +156,22 @@ export default function App() {
         <Route
           path="/signup"
           element={<Signup />}
+        />
+
+        {/* =====================================================
+            PLATFORM MONITORING (operator-only)
+
+            Deliberately NOT under ProtectedRoute/AppLayout and NOT
+            linked from any nav/sidebar — reachable only by typing this
+            exact URL. Access itself is enforced server-side, per
+            request, by /api/platform-admin/* (404s for anyone not on
+            the platform_admins allow-list) — this route existing in
+            the client bundle reveals nothing on its own.
+        ===================================================== */}
+
+        <Route
+          path="/platform-admin/logs"
+          element={<PlatformAdminLogs />}
         />
 
         {/* =====================================================

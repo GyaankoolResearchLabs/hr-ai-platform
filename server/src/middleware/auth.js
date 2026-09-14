@@ -2,6 +2,7 @@ import "dotenv/config";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "../config/supabase.js";
 import { getCached, setCached, evictCached } from "../utils/shortLivedCache.js";
+import { logPlatformError } from "../services/platformErrorLogService.js";
 
 /* =========================================================
    SUPABASE CONFIG
@@ -754,6 +755,14 @@ async function authenticateRequest(req) {
       claims.reason
     );
 
+    logPlatformError({
+      eventType: "invalid_token",
+      req,
+      userEmail: payload?.email || null,
+      message: claims.reason,
+      context: { sub: payload?.sub || null },
+    }).catch(() => {});
+
     return {
       error: {
         status: 401,
@@ -792,6 +801,14 @@ async function authenticateRequest(req) {
     console.error(
       "[AUTH] JWT signature is invalid."
     );
+
+    logPlatformError({
+      eventType: "invalid_token",
+      req,
+      userEmail: payload?.email || null,
+      message: "JWT signature is invalid.",
+      context: { sub: payload?.sub || null },
+    }).catch(() => {});
 
     return {
       error: {

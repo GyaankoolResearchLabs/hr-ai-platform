@@ -235,6 +235,31 @@ audit-log rows). See
 [`scripts/load-test/README.md`](./scripts/load-test/README.md) for
 what it hits, current findings, and full usage.
 
+## Platform monitoring (internal / operator-only — not customer-facing)
+
+> This section documents an internal operator tool. It is not part of the
+> product any customer account can see or reach, and is not referenced
+> from anywhere in the customer-facing app or its navigation.
+
+Every unhandled server exception, every login failure, every invalid/expired
+auth token, and any client-side crash the React error boundary catches is
+captured — server-side only — into `platform_error_logs`
+(`docs/migrations/003_platform_admin.sql`), completely separate from every
+business table. The end user only ever sees a fixed, generic error message;
+full detail (message, stack trace, route, caller) goes to this table.
+
+Viewable at `/platform-admin/logs` — a URL only operators should know, not
+linked from any nav/sidebar. Access is enforced entirely server-side by
+`middleware/requirePlatformAdmin.js`, which checks the caller's
+Supabase-verified email against the `platform_admins` table — an allow-list
+completely independent of `organization_role`. Anyone not on that list
+(including every customer HR/owner account) gets a 404 from every
+`/api/platform-admin/*` route, indistinguishable from a route that doesn't
+exist, rather than a 403 that would reveal the system is there at all.
+
+To add or remove a platform admin, insert/delete a row in `platform_admins`
+directly in the Supabase SQL editor — there is intentionally no UI for it.
+
 ## CI
 
 [`.github/workflows/test.yml`](./.github/workflows/test.yml) runs on

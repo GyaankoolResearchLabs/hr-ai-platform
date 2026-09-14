@@ -1,4 +1,5 @@
 import express from "express";
+import { logPlatformError } from "../services/platformErrorLogService.js";
 
 const router = express.Router();
 
@@ -243,6 +244,27 @@ router.post("/login", async (req, res) => {
 
       /*
       |--------------------------------------------------------------------------
+      | Capture the failed login attempt.
+      |--------------------------------------------------------------------------
+      |
+      | email + timestamp + reason — the password itself is never touched
+      | here (cleanPassword's return value is never passed to this call).
+      |--------------------------------------------------------------------------
+      */
+
+      logPlatformError({
+        eventType: "login_failure",
+        req,
+        route: "/api/auth/login",
+        userEmail: email,
+        message,
+        context: {
+          supabase_status: response.status,
+        },
+      }).catch(() => {});
+
+      /*
+      |--------------------------------------------------------------------------
       | Do not expose unnecessary Supabase internals.
       |--------------------------------------------------------------------------
       */
@@ -370,6 +392,14 @@ router.post("/login", async (req, res) => {
         `${AUTH_TIMEOUT_MS}ms.`
       );
 
+      logPlatformError({
+        eventType: "login_failure",
+        req,
+        route: "/api/auth/login",
+        userEmail: cleanEmail(req.body?.email),
+        message: `Login timed out after ${AUTH_TIMEOUT_MS}ms.`,
+      }).catch(() => {});
+
       return res.status(504).json({
         message:
           "Supabase authentication timed out. Please try again.",
@@ -386,6 +416,14 @@ router.post("/login", async (req, res) => {
       "[SERVER AUTH] Unexpected login error:",
       error
     );
+
+    logPlatformError({
+      eventType: "login_failure",
+      req,
+      route: "/api/auth/login",
+      userEmail: cleanEmail(req.body?.email),
+      error,
+    }).catch(() => {});
 
     return res.status(500).json({
       message:

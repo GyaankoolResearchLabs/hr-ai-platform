@@ -73,6 +73,20 @@ import payslipsRouter from "./routes/payslips.js";
 import expenseClaimsRouter from "./routes/expenseClaims.js";
 import payrollCostAnalyticsRouter from "./routes/payrollCostAnalytics.js";
 import fnfSettlementsRouter from "./routes/fnfSettlements.js";
+
+/* ---------------------------------------------------------
+   PLATFORM MONITORING (operator-only, see routes/platformAdmin.js)
+--------------------------------------------------------- */
+
+import platformAdminRouter from "./routes/platformAdmin.js";
+import clientErrorReportRouter from "./routes/clientErrorReport.js";
+
+/* =========================================================
+   MIDDLEWARE
+========================================================= */
+
+import errorHandler from "./middleware/errorHandler.js";
+
 /* =========================================================
    SERVICES
 ========================================================= */
@@ -768,6 +782,25 @@ app.use(
   complianceCalendarRouter,
 );
 
+/* ---------------------------------------------------------
+   PLATFORM MONITORING (operator-only)
+
+   Not part of the customer-facing product. Gated by
+   middleware/requirePlatformAdmin.js, which checks a Supabase-verified
+   caller's email against the platform_admins table — completely
+   separate from organization_role. See routes/platformAdmin.js.
+--------------------------------------------------------- */
+
+app.use(
+  "/api/platform-admin",
+  platformAdminRouter,
+);
+
+app.use(
+  "/api/client-error-report",
+  clientErrorReportRouter,
+);
+
 /* =========================================================
    404 HANDLER
 ========================================================= */
@@ -783,96 +816,13 @@ app.use(
 
 /* =========================================================
    GLOBAL ERROR HANDLER
+
+   See middleware/errorHandler.js — full error detail (message + stack)
+   is logged server-side to platform_error_logs; the client only ever
+   gets a fixed, generic message from the unexpected-error branch.
 ========================================================= */
 
-app.use(
-  (err, req, res, next) => {
-    console.error(
-      "[SERVER] Unhandled server error:",
-      err,
-    );
-
-    /*
-     * CORS errors
-     */
-    if (
-      err?.message?.startsWith(
-        "CORS blocked origin:",
-      )
-    ) {
-      return res.status(403).json({
-        message: err.message,
-      });
-    }
-
-    /*
-     * JSON body errors
-     */
-    if (
-      err?.type === "entity.parse.failed"
-    ) {
-      return res.status(400).json({
-        message: "Invalid JSON request body.",
-      });
-    }
-
-    /*
-     * Payload too large
-     */
-    if (
-      err?.type === "entity.too.large"
-    ) {
-      return res.status(413).json({
-        message: "Request payload is too large.",
-      });
-    }
-
-    /*
-     * Multer errors
-     */
-    if (
-      err?.name === "MulterError"
-    ) {
-      return res.status(400).json({
-        message:
-          err.message ||
-          "File upload failed",
-      });
-    }
-
-    /*
-     * File validation errors
-     */
-    if (
-      err?.message?.includes(
-        "Only JPG, PNG, WEBP and PDF files are allowed",
-      )
-    ) {
-      return res.status(400).json({
-        message: err.message,
-      });
-    }
-
-    if (
-      err?.message?.includes(
-        "Only PDF, DOC and DOCX resume files are allowed",
-      )
-    ) {
-      return res.status(400).json({
-        message: err.message,
-      });
-    }
-
-    /*
-     * Generic server error
-     */
-    return res.status(500).json({
-      message:
-        err?.message ||
-        "Unexpected server error",
-    });
-  },
-);
+app.use(errorHandler);
 
 /* =========================================================
    AUTOMATIC ESCALATION MONITOR
