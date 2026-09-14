@@ -1,5 +1,4 @@
 import express from "express";
-import { logPlatformError } from "../services/platformErrorLogService.js";
 
 const router = express.Router();
 
@@ -13,6 +12,36 @@ const router = express.Router();
 | - SUPABASE_ANON_KEY is used for password authentication.
 | - NEVER send SUPABASE_SERVICE_ROLE_KEY to the browser.
 |
+*/
+
+/*
+|--------------------------------------------------------------------------
+| NOTE — this route is not called by the frontend's real login flow
+|--------------------------------------------------------------------------
+|
+| client/src/services/authService.js authenticates directly against
+| Supabase from the browser (supabase.auth.signInWithPassword()) and
+| explicitly does NOT call this route (see the comment in that file).
+| Nothing else in the client calls it either (grepped — the only
+| references to "/api/auth/login" anywhere in client/src are that same
+| comment and an unrelated test-fixture string).
+|
+| This was discovered because a login-failure capture point added here
+| never fired for a real wrong-password attempt through the actual
+| login page — the request never reached this route at all. That
+| capture point has been moved to where real traffic actually flows:
+| authService.js's signIn() reports a failed Supabase call to
+| POST /api/client-error-report (the same beacon
+| components/common/ErrorBoundary.jsx uses), which writes it via the
+| same logPlatformError() call used everywhere else — see
+| routes/clientErrorReport.js.
+|
+| The route itself is left as-is (untouched behavior, still a working
+| password-login proxy) in case something outside this repo calls it
+| directly — only the now-dead logging calls were removed. If this
+| route is ever wired back into real frontend traffic, reinstate
+| logging here too.
+|--------------------------------------------------------------------------
 */
 
 const SUPABASE_URL =
@@ -244,27 +273,6 @@ router.post("/login", async (req, res) => {
 
       /*
       |--------------------------------------------------------------------------
-      | Capture the failed login attempt.
-      |--------------------------------------------------------------------------
-      |
-      | email + timestamp + reason — the password itself is never touched
-      | here (cleanPassword's return value is never passed to this call).
-      |--------------------------------------------------------------------------
-      */
-
-      logPlatformError({
-        eventType: "login_failure",
-        req,
-        route: "/api/auth/login",
-        userEmail: email,
-        message,
-        context: {
-          supabase_status: response.status,
-        },
-      }).catch(() => {});
-
-      /*
-      |--------------------------------------------------------------------------
       | Do not expose unnecessary Supabase internals.
       |--------------------------------------------------------------------------
       */
@@ -392,14 +400,6 @@ router.post("/login", async (req, res) => {
         `${AUTH_TIMEOUT_MS}ms.`
       );
 
-      logPlatformError({
-        eventType: "login_failure",
-        req,
-        route: "/api/auth/login",
-        userEmail: cleanEmail(req.body?.email),
-        message: `Login timed out after ${AUTH_TIMEOUT_MS}ms.`,
-      }).catch(() => {});
-
       return res.status(504).json({
         message:
           "Supabase authentication timed out. Please try again.",
@@ -416,14 +416,6 @@ router.post("/login", async (req, res) => {
       "[SERVER AUTH] Unexpected login error:",
       error
     );
-
-    logPlatformError({
-      eventType: "login_failure",
-      req,
-      route: "/api/auth/login",
-      userEmail: cleanEmail(req.body?.email),
-      error,
-    }).catch(() => {});
 
     return res.status(500).json({
       message:

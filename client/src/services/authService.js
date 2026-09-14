@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { reportClientError } from "./clientErrorReportService";
 
 /*
  * =========================================================
@@ -281,6 +282,25 @@ async function signIn(
       "[AUTH SERVICE] Sign-in error:",
       error
     );
+
+    /*
+     * Report the failed attempt — email + reason + timestamp (added
+     * server-side), NEVER the password (the `password` variable above
+     * is never referenced here). Fire-and-forget: reportClientError()
+     * never throws and this must not add latency to the error the user
+     * is about to see.
+     *
+     * This only runs for a genuine Supabase-side failure (wrong
+     * credentials, no session/token returned, a network error reaching
+     * Supabase) — the "Email is required."/"Password is required."
+     * checks above return before this try/catch is ever entered, so an
+     * empty-form submission is never reported as a login failure.
+     */
+    reportClientError({
+      error,
+      eventType: "login_failure",
+      user: { email },
+    });
 
     throw error;
   }

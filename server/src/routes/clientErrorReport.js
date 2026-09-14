@@ -10,10 +10,26 @@ const router = Router();
 |
 | POST /api/client-error-report
 |
-| Lets the frontend report an error it caught on its own (a React error
-| boundary — see client/src/components/common/ErrorBoundary.jsx) back
-| into the same platform_error_logs table used by the server's own
-| capture points.
+| Lets the frontend report an error it caught on its own back into the
+| same platform_error_logs table used by the server's own capture
+| points, via the same logPlatformError() call — a single, consistent
+| write path regardless of which side detected the failure. Two known
+| callers today:
+|
+|   - A React error boundary (client/src/components/common/
+|     ErrorBoundary.jsx) — a render crash, eventType "client_error".
+|   - services/authService.js's signIn() — a failed Supabase
+|     signInWithPassword() call, eventType "login_failure". This is the
+|     real capture point for login failures: the frontend's actual
+|     login flow authenticates directly against Supabase from the
+|     browser (see authService.js) and never calls the Express
+|     POST /api/auth/login route, so that route's own (now dead)
+|     login-failure logging was never reachable — see the comment
+|     there.
+|
+| eventType is caller-supplied but constrained to ALLOWED_EVENT_TYPES
+| below — an unrecognized/missing value falls back to "client_error"
+| rather than writing an arbitrary caller-chosen taxonomy value.
 |
 | Deliberately NOT behind requirePlatformAdmin — every signed-in AND
 | signed-out visitor's browser must be able to reach this (a crash can
@@ -24,6 +40,8 @@ const router = Router();
 | than write one oversized-but-bounded row.
 |--------------------------------------------------------------------------
 */
+
+const ALLOWED_EVENT_TYPES = new Set(["client_error", "login_failure"]);
 
 function cleanString(value, maxLength) {
   if (typeof value !== "string") {
@@ -41,6 +59,11 @@ function cleanString(value, maxLength) {
 
 router.post("/", async (req, res) => {
   try {
+    const requestedEventType = cleanString(req.body?.eventType, 40);
+    const eventType = ALLOWED_EVENT_TYPES.has(requestedEventType)
+      ? requestedEventType
+      : "client_error";
+
     const message = cleanString(req.body?.message, 2000) || "Client-reported error";
     const stack = cleanString(req.body?.stack, 8000);
     const route = cleanString(req.body?.route, 500);
@@ -56,7 +79,7 @@ router.post("/", async (req, res) => {
     const userId = cleanString(req.body?.userId, 100);
 
     await logPlatformError({
-      eventType: "client_error",
+      eventType,
       req,
       route,
       userId,
