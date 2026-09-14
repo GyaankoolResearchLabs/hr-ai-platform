@@ -1,6 +1,7 @@
 import "dotenv/config";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "../config/supabase.js";
+import { getCached, setCached, evictCached } from "../utils/shortLivedCache.js";
 
 /* =========================================================
    SUPABASE CONFIG
@@ -24,6 +25,30 @@ let jwksCache = null;
 let jwksFetchedAt = 0;
 
 const JWKS_CACHE_DURATION = 24 * 60 * 60 * 1000;
+
+/* =========================================================
+   ORGANIZATION MEMBERSHIP CACHE
+
+   Short-lived (NOT the JWKS cache above, and NOT JWT verification,
+   which is never cached — see utils/shortLivedCache.js). Bounds how
+   long a role change/removal can take to apply to a live session.
+========================================================= */
+
+const MEMBERSHIP_CACHE_TTL_MS = 7000;
+const MEMBERSHIP_CACHE_KEY_PREFIX = "org-membership:";
+
+/**
+ * Call right after writing a change to a user's organization_members
+ * row (or deleting it) so the change applies before the TTL would
+ * otherwise expire on its own.
+ */
+export function evictOrganizationMembershipCache(userId) {
+  if (!userId) {
+    return;
+  }
+
+  evictCached(`${MEMBERSHIP_CACHE_KEY_PREFIX}${userId}`);
+}
 
 /* =========================================================
    LOCAL JWKS
@@ -553,6 +578,13 @@ function validateJwtClaims(payload) {
 async function getOrganizationMembership(
   userId
 ) {
+  const cacheKey = `${MEMBERSHIP_CACHE_KEY_PREFIX}${userId}`;
+  const cached = getCached(cacheKey);
+
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const {
     data: membership,
     error,
@@ -575,6 +607,14 @@ async function getOrganizationMembership(
     );
 
     throw error;
+  }
+
+  // Only cache a real result - a not-found membership is exactly the
+  // pre-invite-accept / not-yet-onboarded window, and short-circuiting
+  // that for the TTL would delay a just-completed invite accept from
+  // taking effect.
+  if (membership) {
+    setCached(cacheKey, membership, MEMBERSHIP_CACHE_TTL_MS);
   }
 
   return membership;

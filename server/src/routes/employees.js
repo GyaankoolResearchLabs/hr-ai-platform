@@ -6,6 +6,7 @@ import { getOrganizationForUser } from "../services/organizationLookup.js";
 import { createAuditLog } from "../services/auditLogService.js";
 import {
   resolveEmployeeForUser,
+  evictEmployeeResolutionCache,
 } from "../services/employeeIdentityService.js";
 
 const router = Router();
@@ -1619,6 +1620,19 @@ router.delete(
           message:
             "Employee not found",
         });
+      }
+
+      // The employee record is gone - evict any cached resolution
+      // for whoever was linked to it, so a deleted employee's own
+      // session can't keep resolving to this record for the
+      // remainder of the cache TTL. (organization_members is
+      // untouched by this delete, so the membership cache is left
+      // alone.)
+      if (data.user_id) {
+        evictEmployeeResolutionCache(
+          data.organization_id,
+          data.user_id,
+        );
       }
 
       await auditEmployeeAction({

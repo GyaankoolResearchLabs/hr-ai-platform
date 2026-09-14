@@ -5,7 +5,10 @@ import { Router } from "express";
 import {
   requireAuth,
   requireAuthWithoutOrg,
+  evictOrganizationMembershipCache,
 } from "../middleware/auth.js";
+
+import { evictEmployeeResolutionCache } from "../services/employeeIdentityService.js";
 
 import { supabaseAdmin } from "../config/supabase.js";
 
@@ -617,6 +620,23 @@ router.post(
           });
         }
       }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Evict short-lived caches
+      |--------------------------------------------------------------------------
+      |
+      | requireAuth/resolveEmployee cache membership + employee
+      | resolution for a few seconds (see middleware/auth.js and
+      | services/employeeIdentityService.js). This user just went
+      | from "not linked" to fully linked - evict so the very next
+      | request (typically the redirect into the employee dashboard)
+      | doesn't have to wait out the TTL.
+      |--------------------------------------------------------------------------
+      */
+
+      evictOrganizationMembershipCache(userId);
+      evictEmployeeResolutionCache(invitation.organization_id, userId);
 
       /*
       |--------------------------------------------------------------------------
