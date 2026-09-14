@@ -129,6 +129,8 @@ import HRRequestRouter from "./pages/tools/HRRequestRouter";
 ========================================================= */
 
 import PlatformAdminLogs from "./pages/platform-admin/PlatformAdminLogs";
+import PlatformAdminLogin from "./pages/platform-admin/PlatformAdminLogin";
+import PlatformAdminRoute from "./components/common/PlatformAdminRoute";
 
 /* =========================================================
    APP
@@ -161,18 +163,32 @@ export default function App() {
         {/* =====================================================
             PLATFORM MONITORING (operator-only)
 
-            Deliberately NOT under ProtectedRoute/AppLayout and NOT
-            linked from any nav/sidebar — reachable only by typing this
-            exact URL. Access itself is enforced server-side, per
-            request, by /api/platform-admin/* (404s for anyone not on
-            the platform_admins allow-list) — this route existing in
-            the client bundle reveals nothing on its own.
+            Deliberately NOT under ProtectedRoute/AppLayout/AuthContext
+            and NOT linked from any nav/sidebar — reachable only by
+            typing this exact URL, with its own independent login
+            (PlatformAdminLogin + PlatformAdminRoute, both built on
+            services/authService.js directly — same Supabase
+            users/passwords as the main app, but no dependency on the
+            main app's session/redirect flow). No-session here redirects
+            to /platform-admin/login, never to the main app's /login.
+
+            Who is actually a platform admin is enforced server-side,
+            per request, by /api/platform-admin/* (404s for anyone not
+            on the platform_admins allow-list) — these routes existing
+            in the client bundle reveal nothing on their own.
         ===================================================== */}
 
         <Route
-          path="/platform-admin/logs"
-          element={<PlatformAdminLogs />}
+          path="/platform-admin/login"
+          element={<PlatformAdminLogin />}
         />
+
+        <Route element={<PlatformAdminRoute />}>
+          <Route
+            path="/platform-admin/logs"
+            element={<PlatformAdminLogs />}
+          />
+        </Route>
 
         {/* =====================================================
             PROTECTED ROUTES

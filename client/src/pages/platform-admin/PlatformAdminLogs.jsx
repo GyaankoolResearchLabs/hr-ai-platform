@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  LogOut,
   Loader2,
   RefreshCw,
   Search,
@@ -11,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 
-import { useAuth } from "../../context/AuthContext";
+import { authService } from "../../services/authService";
 import { platformAdminService } from "../../services/platformAdminService";
 
 /*
@@ -23,11 +24,16 @@ import { platformAdminService } from "../../services/platformAdminService";
 | customer-facing app (no sidebar entry, no nav link, not nested under
 | AppLayout/ProtectedRoute). The URL itself is the only way in.
 |
-| This page does not gate itself by role or by any allow-list — that
-| would mean shipping the allow-list logic to the browser. It just calls
-| the API; the API 404s for anyone not in platform_admins
-| (middleware/requirePlatformAdmin.js), and this page renders that 404 as
-| a plain "not found" state, same tone as the rest of the app.
+| Session presence is enforced upstream by
+| components/common/PlatformAdminRoute.jsx (independent of the main
+| app's AuthContext — see that file) — by the time this component
+| renders, a real Supabase session already exists. This page does not
+| additionally gate itself by role or by any allow-list — that would
+| mean shipping the allow-list logic to the browser. It just calls the
+| API; the API 404s for a logged-in session that isn't in
+| platform_admins (middleware/requirePlatformAdmin.js), and this page
+| renders that 404 as a plain "not found" state, same tone as the rest
+| of the app — never a crash, never a misleading "access denied".
 |--------------------------------------------------------------------------
 */
 
@@ -66,8 +72,7 @@ function eventTypeClasses(eventType) {
 }
 
 export default function PlatformAdminLogs() {
-  const { isAuthenticated, authLoading } = useAuth();
-  const location = useLocation();
+  const navigate = useNavigate();
 
   const [logs, setLogs] = useState([]);
   const [pagination, setPagination] = useState(EMPTY_PAGINATION);
@@ -112,18 +117,15 @@ export default function PlatformAdminLogs() {
   }, [search, eventType, page]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
     loadLogs();
-  }, [isAuthenticated, loadLogs]);
+  }, [loadLogs]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-
     platformAdminService
       .getFilters()
       .then((response) => setEventTypes(response?.data?.event_types || []))
       .catch(() => {});
-  }, [isAuthenticated]);
+  }, []);
 
   async function openDetail(id) {
     setDetailLoading(true);
@@ -137,22 +139,12 @@ export default function PlatformAdminLogs() {
     }
   }
 
-  /* =========================================================
-     AUTH GATE
-  ========================================================= */
-
-  if (authLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-canvas">
-        <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <Navigate to="/login" state={{ from: location }} replace />
-    );
+  async function handleSignOut() {
+    try {
+      await authService.signOut();
+    } finally {
+      navigate("/platform-admin/login", { replace: true });
+    }
   }
 
   /* =========================================================
@@ -192,14 +184,24 @@ export default function PlatformAdminLogs() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={loadLogs}
-            className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={loadLogs}
+              className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>
         </header>
 
         {/* FILTERS */}
