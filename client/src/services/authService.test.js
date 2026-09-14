@@ -18,6 +18,7 @@ vi.mock("../lib/supabaseClient", () => ({
   supabase: {
     auth: {
       signInWithPassword: vi.fn(),
+      signUp: vi.fn(),
     },
   },
 }));
@@ -32,6 +33,7 @@ const { authService } = await import("./authService");
 
 beforeEach(() => {
   supabase.auth.signInWithPassword.mockReset();
+  supabase.auth.signUp.mockReset();
   reportClientError.mockReset();
 });
 
@@ -84,5 +86,67 @@ describe("authService.signIn — failure reporting", () => {
 
     expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
     expect(reportClientError).not.toHaveBeenCalled();
+  });
+});
+
+/*
+|--------------------------------------------------------------------------
+| authService.signUp()
+|--------------------------------------------------------------------------
+| Regression coverage for a real reported bug: pages/Signup.jsx has
+| always called authService.signUp(...), but authService never exported
+| a signUp function at all — every real signup attempt threw
+| "authService.signUp is not a function" (minified as "Uf.signUp is not
+| a function" in the production build) before ever reaching Supabase.
+|--------------------------------------------------------------------------
+*/
+describe("authService.signUp", () => {
+  it("calls supabase.auth.signUp with email/password and full_name in options.data, and returns { data }", async () => {
+    const fakeResponse = {
+      data: {
+        user: { id: "u1", email: "new@example.test" },
+        session: { access_token: "t" },
+      },
+      error: null,
+    };
+
+    supabase.auth.signUp.mockResolvedValue(fakeResponse);
+
+    const result = await authService.signUp({
+      email: "new@example.test",
+      password: "a-strong-password",
+      fullName: "Jane Cooper",
+    });
+
+    expect(supabase.auth.signUp).toHaveBeenCalledWith({
+      email: "new@example.test",
+      password: "a-strong-password",
+      options: { data: { full_name: "Jane Cooper" } },
+    });
+
+    expect(result).toEqual({ data: fakeResponse.data });
+  });
+
+  it("throws Supabase's error message when sign-up fails", async () => {
+    supabase.auth.signUp.mockResolvedValue({
+      data: {},
+      error: { message: "User already registered" },
+    });
+
+    await expect(
+      authService.signUp({
+        email: "existing@example.test",
+        password: "a-strong-password",
+        fullName: "Jane Cooper",
+      })
+    ).rejects.toThrow("User already registered");
+  });
+
+  it("rejects with a local validation error before ever calling Supabase when a field is missing", async () => {
+    await expect(
+      authService.signUp({ email: "", password: "x", fullName: "Jane" })
+    ).rejects.toThrow("Email is required.");
+
+    expect(supabase.auth.signUp).not.toHaveBeenCalled();
   });
 });

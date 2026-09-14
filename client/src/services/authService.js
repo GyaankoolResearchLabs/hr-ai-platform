@@ -307,6 +307,112 @@ async function signIn(
 }
 
 /* =========================================================
+   SIGN UP
+========================================================= */
+
+async function signUp({
+  email: emailArgument,
+  password: passwordArgument,
+  fullName: fullNameArgument,
+} = {}) {
+  const email = normalizeEmail(emailArgument);
+  const password = normalizePassword(passwordArgument);
+
+  const fullName =
+    typeof fullNameArgument === "string"
+      ? fullNameArgument.trim()
+      : "";
+
+  console.log(
+    "[AUTH SERVICE] Sign-up requested."
+  );
+
+  console.log(
+    "[AUTH SERVICE] Email:",
+    email || "MISSING"
+  );
+
+  if (!email) {
+    throw new Error(
+      "Email is required."
+    );
+  }
+
+  if (!password) {
+    throw new Error(
+      "Password is required."
+    );
+  }
+
+  try {
+    console.log(
+      "[AUTH SERVICE] Sending sign-up request directly to Supabase..."
+    );
+
+    const {
+      data,
+      error,
+    } =
+      await supabase.auth.signUp({
+        email,
+        password,
+
+        options: {
+          /*
+           * Read back later as user.user_metadata.full_name — see
+           * pages/Dashboard.jsx's firstName derivation.
+           */
+          data: {
+            full_name:
+              fullName || undefined,
+          },
+        },
+      });
+
+    if (error) {
+      console.error(
+        "[AUTH SERVICE] Supabase sign-up failed:",
+        error
+      );
+
+      throw new Error(
+        error.message ||
+          "Unable to create your account. Please try again."
+      );
+    }
+
+    console.log(
+      "[AUTH SERVICE] Sign-up request successful."
+    );
+
+    console.log(
+      "[AUTH SERVICE] Session returned immediately:",
+      data?.session
+        ? "YES"
+        : "NO (likely pending email confirmation)"
+    );
+
+    /*
+     * Shaped as { data: { user, session } } — exactly Supabase's own
+     * response shape, since pages/Signup.jsx destructures `data` and
+     * checks `data?.session` itself (a session comes back immediately
+     * only when email confirmation is disabled on the Supabase
+     * project; otherwise the caller falls back to "check your inbox").
+     */
+    return {
+      data,
+    };
+  } catch (error) {
+    console.error(
+      "[AUTH SERVICE] Sign-up error:",
+      error
+    );
+
+    throw error;
+  }
+}
+
+/* =========================================================
    REFRESH SESSION
 ========================================================= */
 
@@ -571,6 +677,7 @@ function onAuthStateChange(callback) {
 
 export const authService = {
   signIn,
+  signUp,
   signOut,
   getSession,
   getAccessToken,
